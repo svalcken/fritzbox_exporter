@@ -1,20 +1,21 @@
-package main
+package fritzbox_upnp
 
 import (
-    "bytes"
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
-const TEXT_XML = `text/xml; charset="utf-8"`
+const text_xml = `text/xml; charset="utf-8"`
 
 var (
-    ErrResultNotFound = errors.New("result not found")
-    ErrResultWithoutChardata = errors.New("result without chardata")
+	ErrResultNotFound        = errors.New("result not found")
+	ErrResultWithoutChardata = errors.New("result without chardata")
 )
 
 // curl "http://fritz.box:49000/igdupnp/control/WANIPConn1"
@@ -27,14 +28,17 @@ var (
 //      </s:Body> </s:Envelope>"
 
 type UpnpValue struct {
-	path    string
-	service string
-	method  string
-	ret_tag string
+	Path    string
+	Service string
+	Method  string
+	RetTag  string
+
+	ShortName string
+	Help      string
 }
 
-func (v *UpnpValue) Query(device string) (string, error) {
-	url := fmt.Sprintf("http://%s:49000%s", device, v.path)
+func (v *UpnpValue) query(device string, port uint16) (string, error) {
+	url := fmt.Sprintf("http://%s:%d%s", device, port, v.Path)
 
 	bodystr := fmt.Sprintf(`
         <?xml version='1.0' encoding='utf-8'?> 
@@ -43,7 +47,7 @@ func (v *UpnpValue) Query(device string) (string, error) {
                 <u:%s xmlns:u='urn:schemas-upnp-org:service:%s' /> 
             </s:Body>
         </s:Envelope>
-    `, v.method, v.service)
+    `, v.Method, v.Service)
 
 	body := strings.NewReader(bodystr)
 
@@ -52,9 +56,9 @@ func (v *UpnpValue) Query(device string) (string, error) {
 		return "", err
 	}
 
-	action := fmt.Sprintf("urn:schemas-upnp-org:service:%s#%s", v.service, v.method)
+	action := fmt.Sprintf("urn:schemas-upnp-org:service:%s#%s", v.Service, v.Method)
 
-	req.Header["Content-Type"] = []string{TEXT_XML}
+	req.Header["Content-Type"] = []string{text_xml}
 	req.Header["SoapAction"] = []string{action}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -62,10 +66,10 @@ func (v *UpnpValue) Query(device string) (string, error) {
 		return "", err
 	}
 
-    data := new(bytes.Buffer)
-    data.ReadFrom(resp.Body)
+	data := new(bytes.Buffer)
+	data.ReadFrom(resp.Body)
 
-    // fmt.Printf(data.String())
+	// fmt.Printf(data.String())
 
 	dec := xml.NewDecoder(data)
 
@@ -80,7 +84,7 @@ func (v *UpnpValue) Query(device string) (string, error) {
 		}
 
 		if se, ok := t.(xml.StartElement); ok {
-			if se.Name.Local == v.ret_tag {
+			if se.Name.Local == v.RetTag {
 				t2, err := dec.Token()
 				if err != nil {
 					return "", err
@@ -95,4 +99,26 @@ func (v *UpnpValue) Query(device string) (string, error) {
 		}
 
 	}
+}
+
+type UpnpValueString struct{ UpnpValue }
+
+func (v *UpnpValueString) Query(device string, port uint16) (string, error) {
+	return v.query(device, port)
+}
+
+type UpnpValueUint struct{ UpnpValue }
+
+func (v *UpnpValueUint) Query(device string, port uint16) (uint64, error) {
+	strval, err := v.query(device, port)
+	if err != nil {
+		return 0, err
+	}
+
+	val, err := strconv.ParseUint(strval, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }

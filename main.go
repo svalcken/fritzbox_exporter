@@ -2,148 +2,110 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
-    "strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	upnp "github.com/ndecker/fritzbox_exporter/fritzbox_upnp"
 )
 
 var (
-	flag_addr        = flag.String("listen-address", ":9111", "The address to listen on for HTTP requests.")
-	flag_dev_address = flag.String("device-address", "fritz.box", "The URL of the upnp service")
+	flag_test = flag.Bool("test", false, "print all available metrics to stdout")
+	flag_addr = flag.String("listen-address", ":9111", "The address to listen on for HTTP requests.")
+
+	flag_gateway_address = flag.String("gateway-address", "fritz.box", "The URL of the upnp service")
+	flag_gateway_port    = flag.Int("gateway-port", 49000, "The URL of the upnp service")
 )
 
 var (
-	WAN_IP = UpnpValue{
-		path:    "/igdupnp/control/WANIPConn1",
-		service: "WANIPConnection:1",
-		method:  "GetExternalIPAddress",
-		ret_tag: "NewExternalIPAddress",
-	}
-
-	WAN_Packets_Received = UpnpValue{
-		path:    "/igdupnp/control/WANCommonIFC1",
-		service: "WANCommonInterfaceConfig:1",
-		method:  "GetTotalPacketsReceived",
-		ret_tag: "NewTotalPacketsReceived",
-	}
-
-	WAN_Packets_Sent = UpnpValue{
-		path:    "/igdupnp/control/WANCommonIFC1",
-		service: "WANCommonInterfaceConfig:1",
-		method:  "GetTotalPacketsSent",
-		ret_tag: "NewTotalPacketsSent",
-	}
-
-	WAN_Bytes_Received = UpnpValue{
-		path:    "/igdupnp/control/WANCommonIFC1",
-		service: "WANCommonInterfaceConfig:1",
-		method:  "GetAddonInfos",
-		ret_tag: "NewTotalBytesReceived",
-	}
-
-	WAN_Bytes_Sent = UpnpValue{
-		path:    "/igdupnp/control/WANCommonIFC1",
-		service: "WANCommonInterfaceConfig:1",
-		method:  "GetAddonInfos",
-		ret_tag: "NewTotalBytesSent",
-	}
+	collect_errors = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "fritzbox_exporter_collect_errors",
+		Help: "Number of collection errors.",
+	})
 )
 
-type Metric struct {
-    UpnpValue
-    *prometheus.Desc
+type UpnpMetric struct {
+	upnp.UpnpValueUint
+	*prometheus.Desc
 }
 
-func (m Metric) Value() (uint64, error) {
-    strval, err := m.Query(*flag_dev_address)
-    if err != nil {
-        return 0, err
-    }
-
-    return strconv.ParseUint(strval, 10, 64)
+func (m UpnpMetric) Describe(ch chan<- *prometheus.Desc) {
+	ch <- m.Desc
 }
 
-func (m Metric) Describe(ch chan<- *prometheus.Desc) {
-    ch <- m.Desc
+func (m UpnpMetric) Collect(gateway string, port uint16, ch chan<- prometheus.Metric) error {
+	val, err := m.Query(gateway, port)
+	if err != nil {
+		return err
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		m.Desc,
+		prometheus.CounterValue,
+		float64(val),
+		gateway,
+	)
+	return nil
 }
 
-func (m Metric) Collect(ch chan<- prometheus.Metric) error {
-    val, err := m.Value()
-    if err != nil {
-        return err
-    }
-
-    ch <- prometheus.MustNewConstMetric(
-        m.Desc,
-        prometheus.CounterValue,
-        float64(val),
-    )
-    return nil
+func NewUpnpMetric(v upnp.UpnpValueUint) UpnpMetric {
+	return UpnpMetric{
+		v,
+		prometheus.NewDesc(
+			prometheus.BuildFQName("gateway", "wan", v.ShortName),
+			v.Help,
+			[]string{"gateway"},
+			nil,
+		),
+	}
 }
-
-var (
-    packets_sent = Metric{
-        WAN_Packets_Sent,
-        prometheus.NewDesc(
-            prometheus.BuildFQName("gateway", "wan", "packets_sent"),
-            "packets sent on gateway wan interface",
-            nil, 
-            prometheus.Labels{"gateway": *flag_dev_address},
-        ),
-    }
-    packets_received = Metric{
-        WAN_Packets_Received,
-        prometheus.NewDesc(
-            prometheus.BuildFQName("gateway", "wan", "packets_received"),
-            "packets received on gateway wan interface",
-            nil, 
-            prometheus.Labels{"gateway": *flag_dev_address},
-        ),
-    }
-    bytes_sent = Metric{
-        WAN_Bytes_Sent,
-        prometheus.NewDesc(
-            prometheus.BuildFQName("gateway", "wan", "bytes_sent"),
-            "bytes sent on gateway wan interface",
-            nil, 
-            prometheus.Labels{"gateway": *flag_dev_address},
-        ),
-    }
-    bytes_received = Metric{
-        WAN_Bytes_Received,
-        prometheus.NewDesc(
-            prometheus.BuildFQName("gateway", "wan", "bytes_received"),
-            "bytes received on gateway wan interface",
-            nil, 
-            prometheus.Labels{"gateway": *flag_dev_address},
-        ),
-    }
-)
-
 
 type FritzboxCollector struct {
+	gateway string
+	port    uint16
+	metrics []UpnpMetric
 }
 
 func (fc *FritzboxCollector) Describe(ch chan<- *prometheus.Desc) {
-    packets_sent.Describe(ch)
-    packets_received.Describe(ch)
-    bytes_sent.Describe(ch)
-    bytes_received.Describe(ch)
+	for _, m := range fc.metrics {
+		m.Describe(ch)
+	}
 }
 
 func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
-    packets_sent.Collect(ch)
-    packets_received.Collect(ch)
-    bytes_sent.Collect(ch)
-    bytes_received.Collect(ch)
+	for _, m := range fc.metrics {
+		err := m.Collect(fc.gateway, fc.port, ch)
+		if err != nil {
+            collect_errors.Inc()
+		}
+	}
 }
-
 
 func main() {
 	flag.Parse()
 
-	prometheus.MustRegister(&FritzboxCollector{})
+	if *flag_test {
+		for _, v := range upnp.Values {
+			res, err := v.Query(*flag_gateway_address, uint16(*flag_gateway_port))
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("%s: %d\n", v.ShortName, res)
+		}
+		return
+	}
+
+	metrics := make([]UpnpMetric, len(upnp.Values))
+	for _, v := range upnp.Values {
+		metrics = append(metrics, NewUpnpMetric(v))
+	}
+
+	prometheus.MustRegister(&FritzboxCollector{
+		*flag_gateway_address,
+		uint16(*flag_gateway_port),
+		metrics,
+	})
 	// Since we are dealing with custom Collector implementations, it might
 	// be a good idea to enable the collect checks in the registry.
 	prometheus.EnableCollectChecks(true)
