@@ -20,15 +20,15 @@ import (
 
 const text_xml = `text/xml; charset="utf-8"`
 
-var ErrResultWithoutChardata = errors.New("result without chardata")
+var ErrInvalidSOAPResponse = errors.New("invalid SOAP response")
 
 type Root struct {
 	BaseUrl  string
-	Device   UpnpDevice `xml:"device"`
-	Services map[string]*UpnpService
+	Device   Device `xml:"device"`
+	Services map[string]*Service
 }
 
-type UpnpDevice struct {
+type Device struct {
 	root *Root
 
 	DeviceType       string `xml:"deviceType"`
@@ -41,14 +41,14 @@ type UpnpDevice struct {
 	ModelUrl         string `xml:"modelURL"`
 	UDN              string `xml:"UDN"`
 
-	Services []*UpnpService `xml:"serviceList>service"`
-	Devices  []*UpnpDevice  `xml:"deviceList>device"`
+	Services []*Service `xml:"serviceList>service"`
+	Devices  []*Device  `xml:"deviceList>device"`
 
 	PresentationUrl string `xml:"presentationURL"`
 }
 
-type UpnpService struct {
-	Device *UpnpDevice
+type Service struct {
+	Device *Device
 
 	ServiceType string `xml:"serviceType"`
 	ServiceId   string `xml:"serviceId"`
@@ -56,24 +56,24 @@ type UpnpService struct {
 	EventSubUrl string `xml:"eventSubURL"`
 	SCPDUrl     string `xml:"SCPDURL"`
 
-	Actions        map[string]*UpnpAction
-	StateVariables []*UpnpStateVariable
+	Actions        map[string]*Action
+	StateVariables []*StateVariable
 }
 
-type upnpScpd struct {
-	Actions        []*UpnpAction        `xml:"actionList>action"`
-	StateVariables []*UpnpStateVariable `xml:"serviceStateTable>stateVariable"`
+type scpdRoot struct {
+	Actions        []*Action        `xml:"actionList>action"`
+	StateVariables []*StateVariable `xml:"serviceStateTable>stateVariable"`
 }
 
-type UpnpAction struct {
-	service *UpnpService
+type Action struct {
+	service *Service
 
 	Name        string      `xml:"name"`
 	Arguments   []*Argument `xml:"argumentList>argument"`
 	ArgumentMap map[string]*Argument
 }
 
-func (a *UpnpAction) IsGetOnly() bool {
+func (a *Action) IsGetOnly() bool {
 	for _, a := range a.Arguments {
 		if a.Direction == "in" {
 			return false
@@ -86,10 +86,10 @@ type Argument struct {
 	Name                 string `xml:"name"`
 	Direction            string `xml:"direction"`
 	RelatedStateVariable string `xml:"relatedStateVariable"`
-	StateVariable        *UpnpStateVariable
+	StateVariable        *StateVariable
 }
 
-type UpnpStateVariable struct {
+type StateVariable struct {
 	Name         string `xml:"name"`
 	DataType     string `xml:"dataType"`
 	DefaultValue string `xml:"defaultValue"`
@@ -113,11 +113,11 @@ func (r *Root) load() error {
 		return err
 	}
 
-	r.Services = make(map[string]*UpnpService)
+	r.Services = make(map[string]*Service)
 	return r.Device.fillServices(r)
 }
 
-func (d *UpnpDevice) fillServices(r *Root) error {
+func (d *Device) fillServices(r *Root) error {
 	d.root = r
 
 	for _, s := range d.Services {
@@ -128,7 +128,7 @@ func (d *UpnpDevice) fillServices(r *Root) error {
 			return err
 		}
 
-		var scpd upnpScpd
+		var scpd scpdRoot
 
 		dec := xml.NewDecoder(response.Body)
 		err = dec.Decode(&scpd)
@@ -136,10 +136,10 @@ func (d *UpnpDevice) fillServices(r *Root) error {
 			return err
 		}
 
-		s.Actions = make(map[string]*UpnpAction)
-        for _, a := range scpd.Actions {
-            s.Actions[a.Name] = a
-        }
+		s.Actions = make(map[string]*Action)
+		for _, a := range scpd.Actions {
+			s.Actions[a.Name] = a
+		}
 		s.StateVariables = scpd.StateVariables
 
 		for _, a := range s.Actions {
@@ -168,7 +168,7 @@ func (d *UpnpDevice) fillServices(r *Root) error {
 	return nil
 }
 
-func (a *UpnpAction) Call() (Result, error) {
+func (a *Action) Call() (Result, error) {
 	bodystr := fmt.Sprintf(`
         <?xml version='1.0' encoding='utf-8'?> 
         <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'> 
@@ -204,7 +204,7 @@ func (a *UpnpAction) Call() (Result, error) {
 
 }
 
-func (a *UpnpAction) parseSoapResponse(r io.Reader) (Result, error) {
+func (a *Action) parseSoapResponse(r io.Reader) (Result, error) {
 	res := make(Result)
 	dec := xml.NewDecoder(r)
 
@@ -234,7 +234,7 @@ func (a *UpnpAction) parseSoapResponse(r io.Reader) (Result, error) {
 				case xml.CharData:
 					val = string(element)
 				default:
-					return nil, ErrResultWithoutChardata
+					return nil, ErrInvalidSOAPResponse
 				}
 
 				converted, err := convertResult(val, arg)

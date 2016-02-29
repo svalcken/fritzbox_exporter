@@ -32,6 +32,7 @@ type Metric struct {
 	OkValue string
 
 	Desc *prometheus.Desc
+    MetricType prometheus.ValueType
 }
 
 var metrics = []*Metric{
@@ -45,6 +46,8 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.CounterValue,
+
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -56,6 +59,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.CounterValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -67,6 +71,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.CounterValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -78,6 +83,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.CounterValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -89,6 +95,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -100,6 +107,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -112,6 +120,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANIPConnection:1",
@@ -124,6 +133,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANIPConnection:1",
@@ -135,6 +145,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
+        MetricType: prometheus.GaugeValue,
 	},
 }
 
@@ -211,11 +222,10 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- prometheus.MustNewConstMetric(
 			m.Desc,
-			prometheus.CounterValue, // TODO
+            m.MetricType,
 			floatval,
 			fc.Gateway,
 		)
-
 	}
 }
 
