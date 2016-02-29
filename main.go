@@ -261,6 +261,8 @@ func main() {
 	}
 
 	prometheus.MustRegister(&FritzboxCollector{root, *flag_gateway_address})
+    prometheus.MustRegister(collect_errors)
+
 	// Since we are dealing with custom Collector implementations, it might
 	// be a good idea to enable the collect checks in the registry.
 	prometheus.EnableCollectChecks(true)
