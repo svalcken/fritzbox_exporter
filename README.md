@@ -9,7 +9,7 @@ This exporter is tested with a Fritzbox 7490 and software version 06.51.
 ## Building
 
     go get github.com/ndecker/fritzbox_exporter/
-    cd $GOROOT/src/github.com/ndecker/fritzbox_exporter
+    cd $GOPATH/src/github.com/ndecker/fritzbox_exporter
     go install
 
 ## Running
@@ -19,7 +19,7 @@ Heimnetzübersicht > Netzwerkeinstellungen" has to be enabled.
 
 Usage:
 
-    ./fritzbox_exporter -h
+    $GOPATH/bin/fritzbox_exporter -h
     Usage of ./fritzbox_exporter:
       -gateway-address string
         	The URL of the upnp service (default "fritz.box")
