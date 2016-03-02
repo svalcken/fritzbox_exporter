@@ -1,13 +1,14 @@
+// Query UPNP variables from Fritz!Box devices.
 package fritzbox_upnp
 
 // Copyright 2016 Nils Decker
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,12 +37,14 @@ const text_xml = `text/xml; charset="utf-8"`
 
 var ErrInvalidSOAPResponse = errors.New("invalid SOAP response")
 
+// Root of the UPNP tree
 type Root struct {
 	BaseUrl  string
 	Device   Device `xml:"device"`
-	Services map[string]*Service
+	Services map[string]*Service // Map of all services indexed by .ServiceType
 }
 
+// An UPNP Device
 type Device struct {
 	root *Root
 
@@ -55,12 +58,13 @@ type Device struct {
 	ModelUrl         string `xml:"modelURL"`
 	UDN              string `xml:"UDN"`
 
-	Services []*Service `xml:"serviceList>service"`
-	Devices  []*Device  `xml:"deviceList>device"`
+	Services []*Service `xml:"serviceList>service"` // Service of the device
+	Devices  []*Device  `xml:"deviceList>device"`   // Sub-Devices of the device
 
 	PresentationUrl string `xml:"presentationURL"`
 }
 
+// An UPNP Service
 type Service struct {
 	Device *Device
 
@@ -70,8 +74,8 @@ type Service struct {
 	EventSubUrl string `xml:"eventSubURL"`
 	SCPDUrl     string `xml:"SCPDURL"`
 
-	Actions        map[string]*Action
-	StateVariables []*StateVariable
+	Actions        map[string]*Action // All actions available on the service
+	StateVariables []*StateVariable // All state variables available on the service
 }
 
 type scpdRoot struct {
@@ -79,14 +83,17 @@ type scpdRoot struct {
 	StateVariables []*StateVariable `xml:"serviceStateTable>stateVariable"`
 }
 
+// An UPNP Acton on a service
 type Action struct {
 	service *Service
 
 	Name        string      `xml:"name"`
 	Arguments   []*Argument `xml:"argumentList>argument"`
-	ArgumentMap map[string]*Argument
+	ArgumentMap map[string]*Argument // Map of arguments indexed by .Name
 }
 
+// Returns if the action seems to be a query for information.
+// This is determined by checking if the action has no input arguments and at least one output argument.
 func (a *Action) IsGetOnly() bool {
 	for _, a := range a.Arguments {
 		if a.Direction == "in" {
@@ -96,6 +103,7 @@ func (a *Action) IsGetOnly() bool {
 	return len(a.Arguments) > 0
 }
 
+// An Argument to an action
 type Argument struct {
 	Name                 string `xml:"name"`
 	Direction            string `xml:"direction"`
@@ -103,14 +111,19 @@ type Argument struct {
 	StateVariable        *StateVariable
 }
 
+// A state variable that can be manipulated through actions
 type StateVariable struct {
 	Name         string `xml:"name"`
 	DataType     string `xml:"dataType"`
 	DefaultValue string `xml:"defaultValue"`
 }
 
+// The result of a Call() contains all output arguments of the call.
+// The map is indexed by the name of the state variable.
+// The type of the value is string, uint64 or bool depending of the DataType of the variable.
 type Result map[string]interface{}
 
+// load the whole tree
 func (r *Root) load() error {
 	igddesc, err := http.Get(
 		fmt.Sprintf("%s/igddesc.xml", r.BaseUrl),
@@ -131,6 +144,7 @@ func (r *Root) load() error {
 	return r.Device.fillServices(r)
 }
 
+// load all service descriptions
 func (d *Device) fillServices(r *Root) error {
 	d.root = r
 
@@ -182,6 +196,8 @@ func (d *Device) fillServices(r *Root) error {
 	return nil
 }
 
+// Call an action.
+// Currently only actions without input arguments are supported.
 func (a *Action) Call() (Result, error) {
 	bodystr := fmt.Sprintf(`
         <?xml version='1.0' encoding='utf-8'?> 
@@ -270,7 +286,7 @@ func convertResult(val string, arg *Argument) (interface{}, error) {
 		return bool(val == "1"), nil
 
 	case "ui1", "ui2", "ui4":
-        // type ui4 can contain values greater than 2^32!
+		// type ui4 can contain values greater than 2^32!
 		res, err := strconv.ParseUint(val, 10, 64)
 		if err != nil {
 			return nil, err
@@ -282,6 +298,7 @@ func convertResult(val string, arg *Argument) (interface{}, error) {
 	}
 }
 
+// Load the services tree from an device.
 func LoadServices(device string, port uint16) (*Root, error) {
 	var root = &Root{
 		BaseUrl: fmt.Sprintf("http://%s:%d", device, port),

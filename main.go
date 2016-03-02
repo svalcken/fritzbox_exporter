@@ -1,13 +1,13 @@
 package main
 
 // Copyright 2016 Nils Decker
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,7 +26,7 @@ import (
 
 var (
 	flag_test = flag.Bool("test", false, "print all available metrics to stdout")
-	flag_addr = flag.String("listen-address", ":9111", "The address to listen on for HTTP requests.")
+	flag_addr = flag.String("listen-address", ":9132", "The address to listen on for HTTP requests.")
 
 	flag_gateway_address = flag.String("gateway-address", "fritz.box", "The URL of the upnp service")
 	flag_gateway_port    = flag.Int("gateway-port", 49000, "The URL of the upnp service")
@@ -45,8 +45,8 @@ type Metric struct {
 	Result  string
 	OkValue string
 
-	Desc *prometheus.Desc
-    MetricType prometheus.ValueType
+	Desc       *prometheus.Desc
+	MetricType prometheus.ValueType
 }
 
 var metrics = []*Metric{
@@ -60,8 +60,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.CounterValue,
-
+		MetricType: prometheus.CounterValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -73,7 +72,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.CounterValue,
+		MetricType: prometheus.CounterValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -85,7 +84,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.CounterValue,
+		MetricType: prometheus.CounterValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -97,7 +96,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.CounterValue,
+		MetricType: prometheus.CounterValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -109,7 +108,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.GaugeValue,
+		MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -121,7 +120,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.GaugeValue,
+		MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
@@ -134,7 +133,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.GaugeValue,
+		MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANIPConnection:1",
@@ -147,7 +146,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.GaugeValue,
+		MetricType: prometheus.GaugeValue,
 	},
 	{
 		Service: "urn:schemas-upnp-org:service:WANIPConnection:1",
@@ -159,7 +158,7 @@ var metrics = []*Metric{
 			[]string{"gateway"},
 			nil,
 		),
-        MetricType: prometheus.GaugeValue,
+		MetricType: prometheus.GaugeValue,
 	},
 }
 
@@ -236,7 +235,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- prometheus.MustNewConstMetric(
 			m.Desc,
-            m.MetricType,
+			m.MetricType,
 			floatval,
 			fc.Gateway,
 		)
@@ -266,7 +265,7 @@ func main() {
 
 				fmt.Printf("  %s\n", a.Name)
 				for _, arg := range a.Arguments {
-					fmt.Printf("    %s - %s: %v\n", arg.RelatedStateVariable, arg.StateVariable.DataType, res[arg.StateVariable.Name])
+					fmt.Printf("    %s: %v\n", arg.RelatedStateVariable, res[arg.StateVariable.Name])
 				}
 			}
 		}
@@ -275,7 +274,7 @@ func main() {
 	}
 
 	prometheus.MustRegister(&FritzboxCollector{root, *flag_gateway_address})
-    prometheus.MustRegister(collect_errors)
+	prometheus.MustRegister(collect_errors)
 
 	// Since we are dealing with custom Collector implementations, it might
 	// be a good idea to enable the collect checks in the registry.
