@@ -199,7 +199,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 
 		var floatval float64
 		switch tval := val.(type) {
-		case uint32:
+		case uint64:
 			floatval = float64(tval)
 		case bool:
 			if tval {

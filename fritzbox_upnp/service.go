@@ -256,11 +256,12 @@ func convertResult(val string, arg *Argument) (interface{}, error) {
 		return bool(val == "1"), nil
 
 	case "ui1", "ui2", "ui4":
-		res, err := strconv.ParseUint(val, 10, 32)
+        // type ui4 can contain values greater than 2^32!
+		res, err := strconv.ParseUint(val, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		return uint32(res), nil
+		return uint64(res), nil
 	default:
 		return nil, fmt.Errorf("unknown datatype: %s", arg.StateVariable.DataType)
 
