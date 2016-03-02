@@ -26,7 +26,7 @@ import (
 
 var (
 	flag_test = flag.Bool("test", false, "print all available metrics to stdout")
-	flag_addr = flag.String("listen-address", ":9132", "The address to listen on for HTTP requests.")
+	flag_addr = flag.String("listen-address", ":9133", "The address to listen on for HTTP requests.")
 
 	flag_gateway_address = flag.String("gateway-address", "fritz.box", "The URL of the upnp service")
 	flag_gateway_port    = flag.Int("gateway-port", 49000, "The URL of the upnp service")

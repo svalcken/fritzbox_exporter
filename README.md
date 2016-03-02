@@ -26,7 +26,7 @@ Usage:
       -gateway-port int
         	The URL of the upnp service (default 49000)
       -listen-address string
-        	The address to listen on for HTTP requests. (default ":9132")
+        	The address to listen on for HTTP requests. (default ":9133")
       -test
         	print all available metrics to stdout
 
