@@ -322,10 +322,6 @@ func main() {
 	prometheus.MustRegister(collector)
 	prometheus.MustRegister(collect_errors)
 
-	// Since we are dealing with custom Collector implementations, it might
-	// be a good idea to enable the collect checks in the registry.
-	prometheus.EnableCollectChecks(true)
-
 	http.Handle("/metrics", prometheus.Handler())
 	http.ListenAndServe(*flag_addr, nil)
 }
