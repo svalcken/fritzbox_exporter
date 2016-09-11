@@ -18,11 +18,15 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
 	upnp "github.com/ndecker/fritzbox_exporter/fritzbox_upnp"
 )
+
+const serviceLoadRetryTime = 1 * time.Minute
 
 var (
 	flag_test = flag.Bool("test", false, "print all available metrics to stdout")
@@ -163,8 +167,31 @@ var metrics = []*Metric{
 }
 
 type FritzboxCollector struct {
-	Root    *upnp.Root
 	Gateway string
+	Port    uint16
+
+	sync.Mutex // protects Root
+	Root       *upnp.Root
+}
+
+// LoadServices tries to load the service information. Retries until success.
+func (fc *FritzboxCollector) LoadServices() {
+	for {
+		root, err := upnp.LoadServices(fc.Gateway, fc.Port)
+		if err != nil {
+			fmt.Printf("cannot load services: %s\n", err)
+
+			time.Sleep(serviceLoadRetryTime)
+			continue
+		}
+
+		fmt.Printf("services loaded\n")
+
+		fc.Lock()
+		fc.Root = root
+		fc.Unlock()
+		return
+	}
 }
 
 func (fc *FritzboxCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -174,6 +201,15 @@ func (fc *FritzboxCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
+	fc.Lock()
+	root := fc.Root
+	fc.Unlock()
+
+	if root == nil {
+		// Services not loaded yet
+		return
+	}
+
 	var err error
 	var last_service string
 	var last_method string
@@ -181,11 +217,11 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, m := range metrics {
 		if m.Service != last_service || m.Action != last_method {
-			service, ok := fc.Root.Services[m.Service]
+			service, ok := root.Services[m.Service]
 			if !ok {
 				// TODO
 				fmt.Println("cannot find service", m.Service)
-				fmt.Println(fc.Root.Services)
+				fmt.Println(root.Services)
 				continue
 			}
 			action, ok := service.Actions[m.Action]
@@ -242,38 +278,48 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func main() {
-	flag.Parse()
-
+func test() {
 	root, err := upnp.LoadServices(*flag_gateway_address, uint16(*flag_gateway_port))
 	if err != nil {
 		panic(err)
 	}
 
-	if *flag_test {
-		for _, s := range root.Services {
-			fmt.Printf("%s: %s\n", s.Device.FriendlyName, s.ServiceType)
-			for _, a := range s.Actions {
-				if !a.IsGetOnly() {
-					continue
-				}
+	for _, s := range root.Services {
+		fmt.Printf("%s: %s\n", s.Device.FriendlyName, s.ServiceType)
+		for _, a := range s.Actions {
+			if !a.IsGetOnly() {
+				continue
+			}
 
-				res, err := a.Call()
-				if err != nil {
-					panic(err)
-				}
+			res, err := a.Call()
+			if err != nil {
+				panic(err)
+			}
 
-				fmt.Printf("  %s\n", a.Name)
-				for _, arg := range a.Arguments {
-					fmt.Printf("    %s: %v\n", arg.RelatedStateVariable, res[arg.StateVariable.Name])
-				}
+			fmt.Printf("  %s\n", a.Name)
+			for _, arg := range a.Arguments {
+				fmt.Printf("    %s: %v\n", arg.RelatedStateVariable, res[arg.StateVariable.Name])
 			}
 		}
+	}
+}
 
+func main() {
+	flag.Parse()
+
+	if *flag_test {
+		test()
 		return
 	}
 
-	prometheus.MustRegister(&FritzboxCollector{root, *flag_gateway_address})
+	collector := &FritzboxCollector{
+		Gateway: *flag_gateway_address,
+		Port:    uint16(*flag_gateway_port),
+	}
+
+	go collector.LoadServices()
+
+	prometheus.MustRegister(collector)
 	prometheus.MustRegister(collect_errors)
 
 	// Since we are dealing with custom Collector implementations, it might
