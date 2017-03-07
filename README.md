@@ -4,7 +4,7 @@ This exporter exports some variables from an
 [AVM Fritzbox](http://avm.de/produkte/fritzbox/)
 to prometheus.
 
-This exporter is tested with a Fritzbox 7490 and software version 06.51.
+This exporter is tested with a Fritzbox 7490 and 7390 with software version 06.51.
 
 ## Building
 
@@ -22,9 +22,9 @@ Usage:
     $GOPATH/bin/fritzbox_exporter -h
     Usage of ./fritzbox_exporter:
       -gateway-address string
-        	The URL of the upnp service (default "fritz.box")
+        	The hostname or IP of the FRITZ!Box (default "fritz.box")
       -gateway-port int
-        	The URL of the upnp service (default 49000)
+        	The port of the FRITZ!Box UPnP service (default 49000)
       -listen-address string
         	The address to listen on for HTTP requests. (default ":9133")
       -test
