@@ -22,9 +22,9 @@ Usage:
     $GOPATH/bin/fritzbox_exporter -h
     Usage of ./fritzbox_exporter:
       -gateway-address string
-        	The URL of the upnp service (default "fritz.box")
+        	The hostname or IP of the FRITZ!Box (default "fritz.box")
       -gateway-port int
-        	The URL of the upnp service (default 49000)
+        	The port of the FRITZ!Box UPnP service (default 49000)
       -listen-address string
         	The address to listen on for HTTP requests. (default ":9133")
       -test
