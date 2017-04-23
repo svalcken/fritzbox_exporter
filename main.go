@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"log"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -323,5 +324,5 @@ func main() {
 	prometheus.MustRegister(collect_errors)
 
 	http.Handle("/metrics", prometheus.Handler())
-	http.ListenAndServe(*flag_addr, nil)
+	log.Fatal(http.ListenAndServe(*flag_addr, nil))
 }
