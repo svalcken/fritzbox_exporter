@@ -100,14 +100,13 @@ type Action struct {
 // Returns if the action seems to be a query for information.
 // This is determined by checking if the action has no input arguments and at least one output argument.
 func (a *Action) IsGetOnly() bool {
-	if strings.HasPrefix(a.Name, "Get") {
-		for _, a := range a.Arguments {
-			if a.Direction == "in" {
-				return false
-			}
+	for _, a := range a.Arguments {
+		if a.Direction == "in" {
+			return false
 		}
-		return len(a.Arguments) > 0
 	}
+	return len(a.Arguments) > 0
+
 	return false
 
 }
