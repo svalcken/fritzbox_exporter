@@ -15,26 +15,26 @@ package main
 // limitations under the License.
 
 import (
-	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
 
-	upnp "github.com/ndecker/fritzbox_exporter/fritzbox_upnp"
+	upnp "github.com/sberk42/fritzbox_exporter/fritzbox_upnp"
 )
 
 const serviceLoadRetryTime = 1 * time.Minute
 
 var (
 	flag_test = flag.Bool("test", false, "print all available metrics to stdout")
-	flag_addr = flag.String("listen-address", ":9133", "The address to listen on for HTTP requests.")
+	flag_addr = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
 
-	flag_gateway_address  = flag.String("gateway-address", "fritz.box", "The hostname or IP of the FRITZ!Box")
-	flag_gateway_port     = flag.Int("gateway-port", 49000, "The port of the FRITZ!Box UPnP service")
+	flag_gateway_url  = flag.String("gateway-url", "https://fritz.box:49443", "The URL of the FRITZ!Box")
 	flag_gateway_username = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
 	flag_gateway_password = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
 )
@@ -182,8 +182,8 @@ var metrics = []*Metric{
 }
 
 type FritzboxCollector struct {
+	Url      string
 	Gateway  string
-	Port     uint16
 	Username string
 	Password string
 
@@ -194,7 +194,7 @@ type FritzboxCollector struct {
 // LoadServices tries to load the service information. Retries until success.
 func (fc *FritzboxCollector) LoadServices() {
 	for {
-		root, err := upnp.LoadServices(fc.Gateway, fc.Port, fc.Username, fc.Password)
+		root, err := upnp.LoadServices(fc.Url, fc.Username, fc.Password)
 		if err != nil {
 			fmt.Printf("cannot load services: %s\n", err)
 
@@ -296,12 +296,14 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func test() {
-	root, err := upnp.LoadServices(*flag_gateway_address, uint16(*flag_gateway_port), *flag_gateway_username, *flag_gateway_password)
+	root, err := upnp.LoadServices(*flag_gateway_url, *flag_gateway_username, *flag_gateway_password)
 	if err != nil {
 		panic(err)
 	}
 
-	for _, s := range root.Services {
+	for k, s := range root.Services {
+		fmt.Printf("Name: %s\n", k)
+
 		for _, a := range s.Actions {
 			if !a.IsGetOnly() {
 				continue
@@ -324,14 +326,20 @@ func test() {
 func main() {
 	flag.Parse()
 
+	u, err := url.Parse(*flag_gateway_url)
+	if err != nil {
+		fmt.Errorf("invalid URL", err)
+		return
+	}
+
 	if *flag_test {
 		test()
 		return
 	}
 
 	collector := &FritzboxCollector{
-		Gateway:  *flag_gateway_address,
-		Port:     uint16(*flag_gateway_port),
+		Url:  *flag_gateway_url,
+		Gateway: u.Hostname(),
 		Username: *flag_gateway_username,
 		Password: *flag_gateway_password,
 	}

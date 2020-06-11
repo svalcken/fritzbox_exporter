@@ -23,6 +23,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"crypto/tls"
 	"strconv"
 	"strings"
 
@@ -328,9 +329,15 @@ func convertResult(val string, arg *Argument) (interface{}, error) {
 }
 
 // Load the services tree from an device.
-func LoadServices(device string, port uint16, username string, password string) (*Root, error) {
+func LoadServices(baseurl string, username string, password string) (*Root, error) {
+
+	if strings.HasPrefix(baseurl, "https://") {
+		// disable certificate validation, since fritz.box uses self signed cert
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	var root = &Root{
-		BaseUrl:  fmt.Sprintf("http://%s:%d", device, port),
+		BaseUrl:  baseurl,
 		Username: username,
 		Password: password,
 	}
@@ -341,7 +348,7 @@ func LoadServices(device string, port uint16, username string, password string) 
 	}
 
 	var rootTr64 = &Root{
-		BaseUrl:  fmt.Sprintf("http://%s:%d", device, port),
+		BaseUrl:  baseurl,
 		Username: username,
 		Password: password,
 	}
