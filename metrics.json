@@ -1,0 +1,134 @@
+[
+  {
+    "service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+    "action": "GetTotalPacketsReceived",
+    "result": "TotalPacketsReceived",
+    "promDesc": {
+      "fqName": "gateway_wan_packets_received",
+      "help": "packets received on gateway WAN interface",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "CounterValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+    "action": "GetTotalPacketsSent",
+    "result": "TotalPacketsSent",
+    "promDesc": {
+      "fqName": "gateway_wan_packets_sent",
+      "help": "packets sent on gateway WAN interface",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "CounterValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+    "action": "GetAddonInfos",
+    "result": "TotalBytesReceived",
+    "promDesc": {
+      "fqName": "gateway_wan_bytes_received",
+      "help": "bytes received on gateway WAN interface",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "CounterValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+    "action": "GetAddonInfos",
+    "result": "TotalBytesSent",
+    "promDesc": {
+      "fqName": "gateway_wan_bytes_sent",
+      "help": "bytes sent on gateway WAN interface",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "CounterValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+    "action": "GetCommonLinkProperties",
+    "result": "Layer1UpstreamMaxBitRate",
+    "promDesc": {
+      "fqName": "gateway_wan_layer1_upstream_max_bitrate",
+      "help": "Layer1 upstream max bitrate",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "GaugeValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+    "action": "GetCommonLinkProperties",
+    "result": "Layer1DownstreamMaxBitRate",
+    "promDesc": {
+      "fqName": "gateway_wan_layer1_downstream_max_bitrate",
+      "help": "Layer1 downstream max bitrate",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "GaugeValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1",
+    "action": "GetCommonLinkProperties",
+    "result": "PhysicalLinkStatus",
+    "okValue": "Up",
+    "promDesc": {
+      "fqName": "gateway_wan_layer1_link_status",
+      "help": "Status of physical link (Up = 1)",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "GaugeValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANIPConnection:1",
+    "action": "GetStatusInfo",
+    "result": "ConnectionStatus",
+    "okValue": "Connected",
+    "promDesc": {
+      "fqName": "gateway_wan_connection_status",
+      "help": "WAN connection status (Connected = 1)",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "GaugeValue"
+  },
+  {
+    "service": "urn:schemas-upnp-org:service:WANIPConnection:1",
+    "action": "GetStatusInfo",
+    "result": "Uptime",
+    "promDesc": {
+      "fqName": "gateway_wan_connection_uptime_seconds",
+      "help": "WAN connection uptime",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "GaugeValue"
+  },
+  {
+    "service": "urn:dslforum-org:service:WLANConfiguration:1",
+    "action": "GetTotalAssociations",
+    "result": "TotalAssociations",
+    "promDesc": {
+      "fqName": "gateway_wlan_current_connections",
+      "help": "current WLAN connections",
+      "varLabels": [
+        "gateway"
+      ]
+    },
+    "promType": "GaugeValue"
+  }
+]
