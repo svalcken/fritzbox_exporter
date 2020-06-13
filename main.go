@@ -37,7 +37,7 @@ var (
 	flag_addr = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
 	flag_metrics_file = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
 
-	flag_gateway_url  = flag.String("gateway-url", "https://fritz.box:49443", "The URL of the FRITZ!Box")
+	flag_gateway_url  = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
 	flag_gateway_username = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
 	flag_gateway_password = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
 )
