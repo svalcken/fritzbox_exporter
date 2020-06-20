@@ -26,7 +26,7 @@ import (
 
 	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
-
+	
 	upnp "github.com/sberk42/fritzbox_exporter/fritzbox_upnp"
 )
 
@@ -274,5 +274,6 @@ func main() {
 	prometheus.MustRegister(collect_errors)
 
 	http.Handle("/metrics", prometheus.Handler())
+	fmt.Printf("metrics available at http://%s/metrics\n", *flag_addr)
 	log.Fatal(http.ListenAndServe(*flag_addr, nil))
 }
