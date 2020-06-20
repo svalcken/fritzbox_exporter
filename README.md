@@ -14,8 +14,8 @@ https://github.com/ndecker/fritzbox_exporter
 The goal of the fork is:
   - allow passing of username / password using evironment variable - done
   - use https instead of http for communitcation with fritz.box - done
-  - move config of metrics to be exported to config file rather then code
-  - add config for additional metrics to collect (especially from TR-064 API)
+  - move config of metrics to be exported to config file rather then code - done
+  - add config for additional metrics to collect (especially from TR-064 API) - done
   - create a grafana dashboard consing the additional metrics
 
 
@@ -35,16 +35,18 @@ Usage:
     $GOPATH/bin/fritzbox_exporter -h
     Usage of ./fritzbox_exporter:
       -gateway-url string
-            The URL of the FRITZ!Box (default "https://fritz.box:49443")
+        The URL of the FRITZ!Box (default "http://fritz.box:49000")
       -listen-address string
-            The address to listen on for HTTP requests. (default "127.0.0.1:9042")
+        The address to listen on for HTTP requests. (default "127.0.0.1:9042")
+      -metrics-file string
+        The JSON file with the metric definitions. (default "metrics.json")
       -password string
-            The password for the FRITZ!Box UPnP service
+        The password for the FRITZ!Box UPnP service
       -test
-            print all available metrics to stdout
+        print all available metrics to stdout
       -username string
-            The user for the FRITZ!Box UPnP service
-
+        The user for the FRITZ!Box UPnP service
+    
     The password (needed for metrics from TR-064 API) can be passed over environment variables to test in shell:
     read -rs PASSWORD && ./fritzbox_exporter -username <user> -test; unset PASSWORD
 
@@ -57,4 +59,9 @@ curl -s http://127.0.0.1:9042/metrics
 
 The exporter prints all available Variables to stdout when called with the -test option.
 These values are determined by parsing all services from http://fritz.box:49000/igddesc.xml and http://fritzbox:49000/tr64desc.xml (for TR64 username and password is needed!!!)
+
+## Customizing metrics
+
+The metrics to collect are no longer hard coded, but have been moved to the metrics.json file, so just adjust to your needs.
+For a list of all the available metrics just execute the exporter with -test (username and password are needed for the TR-064 API!)
 
