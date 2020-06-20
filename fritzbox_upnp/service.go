@@ -16,18 +16,16 @@ package fritzbox_upnp
 // limitations under the License.
 
 import (
-	"bytes"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"crypto/tls"
 	"strconv"
 	"strings"
-
-	dac "github.com/123Haynes/go-http-digest-auth-client"
+	"crypto/md5"
+	"crypto/rand"
 )
 
 // curl http://fritz.box:49000/igddesc.xml
@@ -98,6 +96,30 @@ type Action struct {
 	ArgumentMap map[string]*Argument // Map of arguments indexed by .Name
 }
 
+// structs to unmarshal SOAP faults
+type SoapEnvelope struct {
+	XMLName	xml.Name			`xml:"http://schemas.xmlsoap.org/soap/envelope/ Envelope"`
+	Body	SoapBody
+}
+type SoapBody struct {
+	XMLName	xml.Name			`xml:"http://schemas.xmlsoap.org/soap/envelope/ Body"`
+	Fault	SoapFault
+}
+type SoapFault struct {
+	XMLName	xml.Name			`xml:"http://schemas.xmlsoap.org/soap/envelope/ Fault"`
+	FaultCode	string			`xml:"faultcode"`
+	FaultString	string			`xml:"faultstring"`
+	Detail		FaultDetail		`xml:"detail"`
+}
+type FaultDetail struct {
+	UpnpError	UpnpError		`xml:"UPnPError"`
+}
+type UpnpError struct {
+	ErrorCode			int		`xml:"errorCode"`
+	ErrorDescription	string	`xml:"errorDescription"`
+}
+
+
 // Returns if the action seems to be a query for information.
 // This is determined by checking if the action has no input arguments and at least one output argument.
 func (a *Action) IsGetOnly() bool {
@@ -142,6 +164,8 @@ func (r *Root) load() error {
 		return err
 	}
 
+	defer igddesc.Body.Close()
+	
 	dec := xml.NewDecoder(igddesc.Body)
 
 	err = dec.Decode(r)
@@ -161,6 +185,8 @@ func (r *Root) loadTr64() error {
 	if err != nil {
 		return err
 	}
+
+	defer igddesc.Body.Close()
 
 	dec := xml.NewDecoder(igddesc.Body)
 
@@ -184,6 +210,8 @@ func (d *Device) fillServices(r *Root) error {
 		if err != nil {
 			return err
 		}
+
+		defer response.Body.Close()
 
 		var scpd scpdRoot
 
@@ -225,17 +253,13 @@ func (d *Device) fillServices(r *Root) error {
 	return nil
 }
 
-// Call an action.
-// Currently only actions without input arguments are supported.
-func (a *Action) Call() (Result, error) {
-	bodystr := fmt.Sprintf(`
-        <?xml version='1.0' encoding='utf-8'?>
-        <s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>
-            <s:Body>
-                <u:%s xmlns:u='%s' />
-            </s:Body>
-        </s:Envelope>
-    `, a.Name, a.service.ServiceType)
+const SoapActionXML = `<?xml version="1.0" encoding="utf-8"?>` +
+	`<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">` +
+		`<s:Body><u:%s xmlns:u=%s /></s:Body>` +
+	`</s:Envelope>`
+
+func (a *Action) createCallHttpRequest() (*http.Request, error) {
+	bodystr := fmt.Sprintf(SoapActionXML, a.Name, a.service.ServiceType)
 
 	url := a.service.Device.root.BaseUrl + a.service.ControlUrl
 	body := strings.NewReader(bodystr)
@@ -248,21 +272,135 @@ func (a *Action) Call() (Result, error) {
 	action := fmt.Sprintf("%s#%s", a.service.ServiceType, a.Name)
 
 	req.Header.Set("Content-Type", text_xml)
-	req.Header.Set("SoapAction", action)
+	req.Header.Set("SOAPAction", action)
 
-	t := dac.NewTransport(a.service.Device.root.Username, a.service.Device.root.Password)
+	return req, nil;	
+}	
 
-	resp, err := t.RoundTrip(req)
+// Call an action.
+// Currently only actions without input arguments are supported.
+func (a *Action) Call() (Result, error) {
+	req, err := a.createCallHttpRequest()	
+
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
+	}
+	
+	// first try call without auth header
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		return nil, err
 	}
 
-	data := new(bytes.Buffer)
-	data.ReadFrom(resp.Body)
+	wwwAuth := resp.Header.Get("WWW-Authenticate")
+	if resp.StatusCode == http.StatusUnauthorized {
+		resp.Body.Close()		// close now, since we make a new request below or fail
+		
+		if wwwAuth != "" && a.service.Device.root.Username != "" && a.service.Device.root.Password != "" {
+			// call failed, but we have a password so calculate header and try again
+			authHeader, err := a.getDigestAuthHeader(wwwAuth, a.service.Device.root.Username, a.service.Device.root.Password)
+			if err != nil {
+				return nil, err
+			}
 
-	return a.parseSoapResponse(data)
+			req, err = a.createCallHttpRequest()	
+			if err != nil {
+				return nil, err
+			}
 
+			req.Header.Set("Authorization", authHeader)
+		
+			resp, err = http.DefaultClient.Do(req)	
+
+			if err != nil {
+				return nil, err
+			}
+			
+		} else {
+			return nil, errors.New(fmt.Sprintf("Unauthorized, but no username and password given"))
+		}
+	}
+	
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := fmt.Sprintf("%s (%d)", http.StatusText(resp.StatusCode), resp.StatusCode)
+		if resp.StatusCode == 500 {
+			buf := new(strings.Builder)
+			io.Copy(buf, resp.Body)
+			body := buf.String()
+			//fmt.Println(body)
+			
+			var soapEnv SoapEnvelope
+			err := xml.Unmarshal([]byte(body), &soapEnv)
+			if err != nil {
+				errMsg = fmt.Sprintf("error decoding SOAPFault: %s", err.Error())
+			} else {
+				soapFault := soapEnv.Body.Fault
+				
+				if soapFault.FaultString == "UPnPError" {
+					upe := soapFault.Detail.UpnpError;
+				
+					errMsg = fmt.Sprintf("SAOPFault: %s %d (%s)", soapFault.FaultString, upe.ErrorCode, upe.ErrorDescription)
+				} else {
+					errMsg = fmt.Sprintf("SAOPFault: %s", soapFault.FaultString)
+				}
+			}			
+		}
+		return nil, errors.New(errMsg)
+	}
+
+	return a.parseSoapResponse(resp.Body)
 }
+
+func (a *Action) getDigestAuthHeader(wwwAuth string, username string, password string) (string, error) {
+	// parse www-auth header
+	if ! strings.HasPrefix(wwwAuth, "Digest ") {
+		return "", errors.New(fmt.Sprintf("WWW-Authentication header is not Digest: '%s'", wwwAuth)) 
+	}
+	
+	s := wwwAuth[7:]
+	d := map[string]string{}
+	for _, kv := range strings.Split(s, ",") {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		d[strings.Trim(parts[0], "\" ")] = strings.Trim(parts[1], "\" ")
+	}
+	
+	if d["algorithm"] == "" {
+		d["algorithm"] = "MD5"
+	} else if d["algorithm"] != "MD5" {
+		return "", errors.New(fmt.Sprintf("digest algorithm not supported: %s != MD5", d["algorithm"]))
+	}
+	
+	if d["qop"] != "auth" {
+		return "", errors.New(fmt.Sprintf("digest qop not supported: %s != auth", d["qop"]))
+	}
+
+	// calc h1 and h2
+    ha1 := fmt.Sprintf("%x", md5.Sum([]byte(username + ":" + d["realm"] + ":" + password)))
+    
+    ha2 := fmt.Sprintf("%x", md5.Sum([]byte("POST:" + a.service.ControlUrl)))
+
+	cn := make([]byte, 8)
+    rand.Read(cn)
+    cnonce := fmt.Sprintf("%x", cn)
+    
+    nCounter := 1
+    nc:=fmt.Sprintf("%08x", nCounter)
+
+	ds := strings.Join([]string{ha1, d["nonce"], nc, cnonce, d["qop"], ha2}, ":")
+	response := fmt.Sprintf("%x", md5.Sum([]byte(ds)))
+	
+	authHeader := fmt.Sprintf("Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", cnonce=\"%s\", nc=%s, qop=%s, response=\"%s\", algorithm=%s",
+								username, d["realm"], d["nonce"], a.service.ControlUrl, cnonce, nc, d["qop"], response, d["algorithm"])
+	
+	return authHeader, nil
+}
+
 
 func (a *Action) parseSoapResponse(r io.Reader) (Result, error) {
 	res := make(Result)
@@ -322,9 +460,17 @@ func convertResult(val string, arg *Argument) (interface{}, error) {
 			return nil, err
 		}
 		return uint64(res), nil
+	case "i4":
+		res, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return int64(res), nil
+	case "dateTime", "uuid":
+		// data types we don't convert yet
+		return val, nil		
 	default:
-		return nil, fmt.Errorf("unknown datatype: %s", arg.StateVariable.DataType)
-
+		return nil, fmt.Errorf("unknown datatype: %s (%s)", arg.StateVariable.DataType, val)
 	}
 }
 

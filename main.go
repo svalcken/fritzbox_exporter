@@ -193,20 +193,20 @@ func test() {
 	}
 
 	for k, s := range root.Services {
-		fmt.Printf("Name: %s\n", k)
+		fmt.Printf("Service: %s (Url: %s)\n", k, s.ControlUrl)
 
 		for _, a := range s.Actions {
 			if !a.IsGetOnly() {
 				continue
 			}
 
+			fmt.Printf("  %s\n", a.Name)
 			res, err := a.Call()
 			if err != nil {
-				fmt.Printf("  %s unexpected error:", a.Name, err)
+				fmt.Printf("    FAILED:%s\n", err.Error())
 				continue
 			}
 
-			fmt.Printf("  %s\n", a.Name)
 			for _, arg := range a.Arguments {
 				fmt.Printf("    %s: %v\n", arg.RelatedStateVariable, res[arg.StateVariable.Name])
 			}
