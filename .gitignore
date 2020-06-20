@@ -1,1 +1,3 @@
 fritzbox_exporter
+.project
+vendor/*
