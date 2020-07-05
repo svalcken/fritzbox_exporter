@@ -12,11 +12,11 @@ which is forked from:
 https://github.com/ndecker/fritzbox_exporter
 
 The goal of the fork is:
-  - allow passing of username / password using evironment variable - done
-  - use https instead of http for communitcation with fritz.box - done
-  - move config of metrics to be exported to config file rather then code - done
-  - add config for additional metrics to collect (especially from TR-064 API) - done
-  - create a grafana dashboard consing the additional metrics
+  - [x] allow passing of username / password using evironment variable
+  - [x] use https instead of http for communitcation with fritz.box
+  - [x] move config of metrics to be exported to config file rather then code
+  - [x] add config for additional metrics to collect (especially from TR-064 API)
+  - [x] create a grafana dashboard consuming the additional metrics
 
 
 ## Building
