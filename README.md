@@ -69,3 +69,6 @@ For a list of all the available metrics just execute the exporter with -test (us
 
 See [all_available_metrics.json](all_available_metrics.json) for a dump of all the metrics retrieved from my FritzBox, the format is the same as in the metrics.json file, so it can be used to easily add further metrics to retrieve.
 
+## Grafana Dashboard
+
+The dashboard is now also published on [Grafana](https://grafana.com/grafana/dashboards/12579).
