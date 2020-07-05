@@ -23,6 +23,8 @@ import (
 	"time"
 	"encoding/json"
 	"io/ioutil"
+	"sort"
+	"bytes"
 
 	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,6 +36,8 @@ const serviceLoadRetryTime = 1 * time.Minute
 
 var (
 	flag_test = flag.Bool("test", false, "print all available metrics to stdout")
+	flag_jsonout = flag.String("json-out", "", "store metrics also to JSON file when running test")
+	 
 	flag_addr = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
 	flag_metrics_file = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
 
@@ -191,11 +195,28 @@ func test() {
 	if err != nil {
 		panic(err)
 	}
+	
+	var newEntry bool = false
+	var json bytes.Buffer
+	json.WriteString("[\n")
 
-	for k, s := range root.Services {
+	serviceKeys := []string{}
+	for k, _ := range root.Services {
+		serviceKeys = append(serviceKeys, k)
+	}
+	sort.Strings(serviceKeys)
+	for _, k := range serviceKeys {
+		s := root.Services[k]
 		fmt.Printf("Service: %s (Url: %s)\n", k, s.ControlUrl)
+		
+		actionKeys := []string{}
+		for l, _ := range s.Actions {
+			actionKeys = append(actionKeys, l)
+		}
+		sort.Strings(actionKeys)
+		for _, l := range actionKeys {
+			a := s.Actions[l]
 
-		for _, a := range s.Actions {
 			if !a.IsGetOnly() {
 				continue
 			}
@@ -209,8 +230,32 @@ func test() {
 
 			for _, arg := range a.Arguments {
 				fmt.Printf("    %s: %v\n", arg.RelatedStateVariable, res[arg.StateVariable.Name])
+
+				// create new json entry				
+				if(newEntry) {
+					json.WriteString(",\n")
+				} else {
+					newEntry=true
+				}
+				
+				json.WriteString("\t{\n\t\t\"service\": \"")
+				json.WriteString(k)
+				json.WriteString("\",\n\t\t\"action\": \"")
+				json.WriteString(a.Name)
+				json.WriteString("\",\n\t\t\"result\": \"")
+				json.WriteString(arg.RelatedStateVariable)
+				json.WriteString("\"\n\t}")
 			}
 		}
+	}
+	
+	json.WriteString("\n]")
+	
+	if *flag_jsonout != "" {
+		err := ioutil.WriteFile(*flag_jsonout, json.Bytes(), 0644)
+		if err != nil {
+			fmt.Printf("Failed writing JSON file '%s': %s\n", *flag_jsonout, err.Error())
+		}			
 	}
 }
 
