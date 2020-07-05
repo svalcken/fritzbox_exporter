@@ -6,10 +6,6 @@ to prometheus.
 
 This exporter is tested with a Fritzbox 7590 software version 07.12.
 
-This is a fork from:
-https://github.com/123Haynes/fritzbox_exporter
-which is forked from:
-https://github.com/ndecker/fritzbox_exporter
 
 The goal of the fork is:
   - [x] allow passing of username / password using evironment variable
@@ -18,6 +14,10 @@ The goal of the fork is:
   - [x] add config for additional metrics to collect (especially from TR-064 API)
   - [x] create a grafana dashboard consuming the additional metrics
 
+Other changes:
+  - replaced digest authentication code with own implementation
+  - improved error messages
+  
 
 ## Building
 
