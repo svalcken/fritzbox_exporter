@@ -123,12 +123,12 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	var err error
-	var last_service string
-	var last_method string
-	var last_result upnp.Result
+	var result_map = make(map[string]upnp.Result)
 
 	for _, m := range metrics {
-		if m.Service != last_service || m.Action != last_method {
+		m_key := m.Service+"|"+m.Action
+		last_result	:= result_map[m_key];
+		if last_result == nil {
 			service, ok := root.Services[m.Service]
 			if !ok {
 				// TODO
@@ -149,6 +149,8 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 				collect_errors.Inc()
 				continue
 			}
+			
+			result_map[m_key]=last_result
 		}
 
 		val, ok := last_result[m.Result]
