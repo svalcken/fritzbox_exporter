@@ -44,6 +44,8 @@ Usage:
         The password for the FRITZ!Box UPnP service
       -test
         print all available metrics to stdout
+      -json-out string
+        store metrics also to JSON file when running test   
       -username string
         The user for the FRITZ!Box UPnP service
     
@@ -62,6 +64,8 @@ These values are determined by parsing all services from http://fritz.box:49000/
 
 ## Customizing metrics
 
-The metrics to collect are no longer hard coded, but have been moved to the metrics.json file, so just adjust to your needs.
+The metrics to collect are no longer hard coded, but have been moved to the [metrics.json](metrics.json) file, so just adjust to your needs.
 For a list of all the available metrics just execute the exporter with -test (username and password are needed for the TR-064 API!)
+
+See [all_available_metrics.json](all_available_metrics.json) for a dump of all the metrics retrieved from my FritzBox, the format is the same as in the metrics.json file, so it can be used to easily add further metrics to retrieve.
 
