@@ -4,7 +4,7 @@ This exporter exports some variables from an
 [AVM Fritzbox](http://avm.de/produkte/fritzbox/)
 to prometheus.
 
-This exporter is tested with a Fritzbox 7590 software version 07.12.
+This exporter is tested with a Fritzbox 7590 software version 07.12 and 07.20.
 
 
 The goal of the fork is:
@@ -67,7 +67,9 @@ These values are determined by parsing all services from http://fritz.box:49000/
 The metrics to collect are no longer hard coded, but have been moved to the [metrics.json](metrics.json) file, so just adjust to your needs.
 For a list of all the available metrics just execute the exporter with -test (username and password are needed for the TR-064 API!)
 
-See [all_available_metrics.json](all_available_metrics.json) for a dump of all the metrics retrieved from my FritzBox, the format is the same as in the metrics.json file, so it can be used to easily add further metrics to retrieve.
+For a list of all available metrics, see the dumps below (the format is the same as in the metrics.json file, so it can be used to easily add further metrics to retrieve):
+- [FritzBox 7590 v7.12](all_available_metrics_7590_7.12.json)
+- [FritzBox 7590 v7.20](all_available_metrics_7590_7.20.json)
 
 ## Grafana Dashboard
 
