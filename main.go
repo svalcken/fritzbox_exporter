@@ -221,6 +221,10 @@ func test() {
 			a := s.Actions[l]
 
 			if !a.IsGetOnly() {
+				fmt.Printf("  %s - not calling - arguments needed:\n", a.Name)
+				for _, arg := range a.Arguments {
+					fmt.Printf("    %s [%s]\n", arg.RelatedStateVariable, arg.Direction)
+       				}
 				continue
 			}
 
