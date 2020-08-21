@@ -221,9 +221,10 @@ func test() {
 			a := s.Actions[l]
 
 			if !a.IsGetOnly() {
-				fmt.Printf("  %s - not calling - arguments needed:\n", a.Name)
+				fmt.Printf("  %s - not calling - arguments: variable [direction] (soap name, soap type\n", a.Name)
 				for _, arg := range a.Arguments {
-					fmt.Printf("    %s [%s]\n", arg.RelatedStateVariable, arg.Direction)
+					sv := arg.StateVariable
+					fmt.Printf("    %s [%s] (%s, %s)\n", arg.RelatedStateVariable, arg.Direction, arg.Name, sv.DataType)
        				}
 				continue
 			}
