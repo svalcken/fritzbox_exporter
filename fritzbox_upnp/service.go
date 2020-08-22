@@ -294,7 +294,7 @@ func (a *Action) createCallHttpRequest(actionArgs []ActionArgument) (*http.Reque
 
 // Call an action.
 func (a *Action) Call() (Result, error) {
-	return a.CallWithParams([]ActionArgument{});
+	return a.CallWithArguments([]ActionArgument{});
 }
 // Currently only actions without input arguments are supported.
 func (a *Action) CallWithArguments(actionArgs []ActionArgument) (Result, error) {
@@ -319,12 +319,12 @@ func (a *Action) CallWithArguments(actionArgs []ActionArgument) (Result, error) 
 			// call failed, but we have a password so calculate header and try again
 			authHeader, err := a.getDigestAuthHeader(wwwAuth, a.service.Device.root.Username, a.service.Device.root.Password)
 			if err != nil {
-				return nil, err
+				return nil, errors.New(fmt.Sprintf("%s: %s", a.Name, err.Error))
 			}
 
 			req, err = a.createCallHttpRequest(actionArgs)	
 			if err != nil {
-				return nil, err
+				return nil, errors.New(fmt.Sprintf("%s: %s", a.Name, err.Error))
 			}
 
 			req.Header.Set("Authorization", authHeader)
@@ -332,11 +332,11 @@ func (a *Action) CallWithArguments(actionArgs []ActionArgument) (Result, error) 
 			resp, err = http.DefaultClient.Do(req)	
 
 			if err != nil {
-				return nil, err
+				return nil, errors.New(fmt.Sprintf("%s: %s", a.Name, err.Error))
 			}
 			
 		} else {
-			return nil, errors.New(fmt.Sprintf("Unauthorized, but no username and password given"))
+			return nil, errors.New(fmt.Sprintf("%s: Unauthorized, but no username and password given", a.Name))
 		}
 	}
 	
@@ -366,7 +366,7 @@ func (a *Action) CallWithArguments(actionArgs []ActionArgument) (Result, error) 
 				}
 			}			
 		}
-		return nil, errors.New(errMsg)
+		return nil, errors.New(fmt.Sprintf("%s: %s", a.Name, errMsg))
 	}
 
 	return a.parseSoapResponse(resp.Body)
