@@ -18,6 +18,7 @@ package fritzbox_upnp
 import (
 	"encoding/xml"
 	"errors"
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -94,6 +95,12 @@ type Action struct {
 	Name        string               `xml:"name"`
 	Arguments   []*Argument          `xml:"argumentList>argument"`
 	ArgumentMap map[string]*Argument // Map of arguments indexed by .Name
+}
+
+// An Inüut Argument to pass to an action
+type ActionArgument struct {
+	Name		string
+	Value		string	
 }
 
 // structs to unmarshal SOAP faults
@@ -255,11 +262,19 @@ func (d *Device) fillServices(r *Root) error {
 
 const SoapActionXML = `<?xml version="1.0" encoding="utf-8"?>` +
 	`<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">` +
-		`<s:Body><u:%s xmlns:u=%s /></s:Body>` +
+		`<s:Body><u:%s xmlns:u=%s>%s</u:%s xmlns:u=%s></s:Body>` +
 	`</s:Envelope>`
 
-func (a *Action) createCallHttpRequest() (*http.Request, error) {
-	bodystr := fmt.Sprintf(SoapActionXML, a.Name, a.service.ServiceType)
+const SoapActionParamXML = `<%s>%s</%s>`
+
+func (a *Action) createCallHttpRequest(actionArgs []ActionArgument) (*http.Request, error) {
+	argsString := ""
+	for _, aa := range actionArgs{
+		var buf bytes.Buffer
+		xml.EscapeText(&buf, []byte(aa.Value))
+		argsString += fmt.Sprintf(SoapActionParamXML, aa.Name, buf.String(), aa.Name)
+	}
+	bodystr := fmt.Sprintf(SoapActionXML, a.Name, a.service.ServiceType, argsString, a.Name, a.service.ServiceType)
 
 	url := a.service.Device.root.BaseUrl + a.service.ControlUrl
 	body := strings.NewReader(bodystr)
@@ -278,9 +293,12 @@ func (a *Action) createCallHttpRequest() (*http.Request, error) {
 }	
 
 // Call an action.
-// Currently only actions without input arguments are supported.
 func (a *Action) Call() (Result, error) {
-	req, err := a.createCallHttpRequest()	
+	return a.CallWithParams([]ActionArgument{});
+}
+// Currently only actions without input arguments are supported.
+func (a *Action) CallWithArguments(actionArgs []ActionArgument) (Result, error) {
+	req, err := a.createCallHttpRequest(actionArgs)	
 
 	if err != nil {
 		return nil, err
@@ -304,7 +322,7 @@ func (a *Action) Call() (Result, error) {
 				return nil, err
 			}
 
-			req, err = a.createCallHttpRequest()	
+			req, err = a.createCallHttpRequest(actionArgs)	
 			if err != nil {
 				return nil, err
 			}
