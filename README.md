@@ -50,7 +50,7 @@ Usage:
         The user for the FRITZ!Box UPnP service
     
     The password (needed for metrics from TR-064 API) can be passed over environment variables to test in shell:
-    read -rs PASSWORD && ./fritzbox_exporter -username <user> -test; unset PASSWORD
+    read -rs PASSWORD && export PASSWORD && ./fritzbox_exporter -username <user> -test; unset PASSWORD
 
 ## Exported metrics
 
