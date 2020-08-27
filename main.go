@@ -146,7 +146,15 @@ func (fc *FritzboxCollector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric, val interface{}) {
+func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric, result upnp.Result) {
+	
+	val, ok := result[m.Result]
+	if !ok {
+		fmt.Printf("%s.%s has no result %s", m.Service, m.Action, m.Result)
+		collect_errors.Inc()
+		return
+	}
+			
 	var floatval float64
 	switch tval := val.(type) {
 		case uint64:
@@ -169,12 +177,26 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 			return
 	}
 
+	labels := make([]string, len(m.PromDesc.VarLabels))
+	for i, l := range m.PromDesc.VarLabels {
+		if l == "gateway" {
+			labels[i] = fc.Gateway
+		} else {
+			lval, ok := result[l]
+			if !ok {
+				fmt.Printf("%s.%s has no resul for label %s", m.Service, m.Action, l)
+				lval = ""
+			}			
+			
+			labels[i] = fmt.Sprintf("%v", lval)
+		}
+	}
+	
 	ch <- prometheus.MustNewConstMetric(
 		m.Desc,
 		m.MetricType,
 		floatval,
-		fc.Gateway,
-	)	
+		labels...)	
 }
 
 func (fc *FritzboxCollector) GetActionResult(result_map map[string]upnp.Result, serviceType string, actionName string, actionArg *upnp.ActionArgument) (upnp.Result, error) {
@@ -264,15 +286,8 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			collect_errors.Inc()
 			continue			
 		}
-		
-		val, ok := result[m.Result]
-		if !ok {
-			fmt.Printf("%s.%s has no result %s", m.Service, m.Action, m.Result)
-			collect_errors.Inc()
-			continue
-		}
 
-		fc.ReportMetric(ch, m, val)
+		fc.ReportMetric(ch, m, result)
 	}
 }
 
