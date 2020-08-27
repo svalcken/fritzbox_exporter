@@ -26,6 +26,8 @@ import (
 	"sort"
 	"bytes"
 	"errors"
+	"strings"
+	"strconv"
 	
 	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
@@ -188,7 +190,8 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 				lval = ""
 			}			
 			
-			labels[i] = fmt.Sprintf("%v", lval)
+			// convert tolower to avoid problems with labels like hostname
+			labels[i] = strings.ToLower(fmt.Sprintf("%v", lval))
 		}
 	}
 	
@@ -273,7 +276,28 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 
 			if aa.IsIndex {
-				// TODO handle index iterations
+				sval := fmt.Sprintf("%v", value)
+				count, err := strconv.Atoi(sval)
+				if err != nil {
+					fmt.Println(err.Error())
+					collect_errors.Inc()
+					continue			
+				}
+				
+				for i:=0; i<count; i++ {
+					actArg = &upnp.ActionArgument{Name: aa.Name, Value: i }
+					result, err := fc.GetActionResult(result_map, m.Service, m.Action, actArg)
+
+					if err != nil {
+						fmt.Println(err.Error())
+						collect_errors.Inc()
+						continue			
+					}
+
+					fc.ReportMetric(ch, m, result)					
+				}
+				
+				continue
 			} else {
 				actArg = &upnp.ActionArgument{Name: aa.Name, Value: value }
 			}
@@ -414,7 +438,14 @@ func main() {
 	// init metrics
 	for _, m := range metrics {
 		pd := m.PromDesc
-		m.Desc		= prometheus.NewDesc(pd.FqName, pd.Help, pd.VarLabels, nil)
+		
+		// make labels lower case
+		labels := make([]string, len(pd.VarLabels))
+		for i, l := range pd.VarLabels {
+			labels[i] = strings.ToLower(l)
+		}
+		
+		m.Desc		= prometheus.NewDesc(pd.FqName, pd.Help, labels, nil)
 		m.MetricType	= getValueType(m.PromType)
 	}
 
