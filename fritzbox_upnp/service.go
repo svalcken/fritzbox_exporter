@@ -100,7 +100,7 @@ type Action struct {
 // An Inüut Argument to pass to an action
 type ActionArgument struct {
 	Name		string
-	Value		string	
+	Value		interface{}
 }
 
 // structs to unmarshal SOAP faults
@@ -267,12 +267,13 @@ const SoapActionXML = `<?xml version="1.0" encoding="utf-8"?>` +
 
 const SoapActionParamXML = `<%s>%s</%s>`
 
-func (a *Action) createCallHttpRequest(actionArgs []ActionArgument) (*http.Request, error) {
+func (a *Action) createCallHttpRequest(actionArg *ActionArgument) (*http.Request, error) {
 	argsString := ""
-	for _, aa := range actionArgs{
+	if actionArg != nil {
 		var buf bytes.Buffer
-		xml.EscapeText(&buf, []byte(aa.Value))
-		argsString += fmt.Sprintf(SoapActionParamXML, aa.Name, buf.String(), aa.Name)
+		sValue := fmt.Sprintf("%v", actionArg.Value)
+		xml.EscapeText(&buf, []byte(sValue))
+		argsString += fmt.Sprintf(SoapActionParamXML, actionArg.Name, buf.String(), actionArg.Name)
 	}
 	bodystr := fmt.Sprintf(SoapActionXML, a.Name, a.service.ServiceType, argsString, a.Name, a.service.ServiceType)
 
@@ -292,16 +293,20 @@ func (a *Action) createCallHttpRequest(actionArgs []ActionArgument) (*http.Reque
 	return req, nil;	
 }	
 
-// Call an action.
-func (a *Action) Call() (Result, error) {
-	return a.CallWithArguments([]ActionArgument{});
-}
-// Currently only actions without input arguments are supported.
-func (a *Action) CallWithArguments(actionArgs []ActionArgument) (Result, error) {
-	req, err := a.createCallHttpRequest(actionArgs)	
+// store auth header for reuse
+var authHeader = ""
+
+// Call an action with argument if given
+func (a *Action) Call(actionArg *ActionArgument) (Result, error) {
+	req, err := a.createCallHttpRequest(actionArg)	
 
 	if err != nil {
 		return nil, err
+	}
+
+	// reuse prior authHeader, to avoid unnecessary authentication
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
 	}
 	
 	// first try call without auth header
@@ -317,12 +322,12 @@ func (a *Action) CallWithArguments(actionArgs []ActionArgument) (Result, error) 
 		
 		if wwwAuth != "" && a.service.Device.root.Username != "" && a.service.Device.root.Password != "" {
 			// call failed, but we have a password so calculate header and try again
-			authHeader, err := a.getDigestAuthHeader(wwwAuth, a.service.Device.root.Username, a.service.Device.root.Password)
+			authHeader, err = a.getDigestAuthHeader(wwwAuth, a.service.Device.root.Username, a.service.Device.root.Password)
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("%s: %s", a.Name, err.Error))
 			}
 
-			req, err = a.createCallHttpRequest(actionArgs)	
+			req, err = a.createCallHttpRequest(actionArg)	
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("%s: %s", a.Name, err.Error))
 			}
