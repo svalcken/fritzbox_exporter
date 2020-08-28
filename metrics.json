@@ -145,6 +145,71 @@
 		"promType": "GaugeValue"
 	},
 	{
+		"service": "urn:dslforum-org:service:WANPPPConnection:1",
+		"action": "GetInfo",
+		"result": "ConnectionStatus",
+		"okValue": "Connected",
+		"promDesc": {
+			"fqName": "gateway_ppp_connection_status",
+			"help": "WAN PPP connection status (Connected = 1)",
+			"varLabels": [
+				"gateway",
+				"ConnectionType",
+				"ExternalIPAddress",
+				"MACAddress"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:dslforum-org:service:WANPPPConnection:1",
+		"action": "GetInfo",
+		"result": "Uptime",
+		"promDesc": {
+			"fqName": "gateway_ppp_connection_uptime_seconds",
+			"help": "WAN PPP connection uptime",
+			"varLabels": [
+				"gateway",
+				"ConnectionType",
+				"ExternalIPAddress",
+				"MACAddress"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:dslforum-org:service:WANPPPConnection:1",
+		"action": "GetInfo",
+		"result": "UpstreamMaxBitRate",
+		"promDesc": {
+			"fqName": "gateway_ppp_connection_upstream_maxbitrate",
+			"help": "WAN PPP connection upstream max bitrate",
+			"varLabels": [
+				"gateway",
+				"ConnectionType",
+				"ExternalIPAddress",
+				"MACAddress"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:dslforum-org:service:WANPPPConnection:1",
+		"action": "GetInfo",
+		"result": "DownstreamMaxBitRate",
+		"promDesc": {
+			"fqName": "gateway_ppp_connection_downstream_maxbitrate",
+			"help": "WAN PPP connection downstream max bitrate",
+			"varLabels": [
+				"gateway",
+				"ConnectionType",
+				"ExternalIPAddress",
+				"MACAddress"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
 		"service": "urn:dslforum-org:service:WLANConfiguration:1",
 		"action": "GetTotalAssociations",
 		"result": "TotalAssociations",
@@ -178,7 +243,8 @@
 			"fqName": "gateway_uptime_seconds",
 			"help": "gateway uptime",
 			"varLabels": [
-				"gateway"
+				"gateway",
+				"Description"
 			]
 		},
 		"promType": "GaugeValue"
