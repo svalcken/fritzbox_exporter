@@ -208,5 +208,50 @@
 			]
 		},
 		"promType": "CounterValue"
+	},
+	{
+		"service": "urn:dslforum-org:service:Hosts:1",
+		"action": "GetGenericHostEntry",
+		"actionArgument": { 
+			"name": "NewIndex", 
+			"isIndex": true,
+			"providerAction": "GetHostNumberOfEntries", 
+			"value": "HostNumberOfEntries" 
+		},
+		"result": "Active",
+		"promDesc": {
+			"fqName": "gateway_hosts_status",
+			"help": "is host currently active",
+			"varLabels": [
+				"gateway",
+				"IPAddress",
+				"MACAddress",
+				"InterfaceType",
+				"HostName"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:dslforum-org:service:X_AVM-DE_Dect:1",
+		"action": "GetGenericDectEntry",
+		"actionArgument": { 
+			"name": "NewIndex", 
+			"isIndex": true,
+			"providerAction": "GetNumberOfDectEntries", 
+			"value": "NumberOfEntries" 
+		},
+		"result": "Active",
+		"promDesc": {
+			"fqName": "gateway_dect_status",
+			"help": "is dect device currently active",
+			"varLabels": [
+				"gateway",
+				"ID",
+				"Name",
+				"Model"
+			]
+		},
+		"promType": "GaugeValue"
 	}
 ]
