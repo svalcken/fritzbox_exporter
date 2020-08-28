@@ -220,7 +220,7 @@
 		},
 		"result": "Active",
 		"promDesc": {
-			"fqName": "gateway_hosts_status",
+			"fqName": "gateway_hosts_active",
 			"help": "is host currently active",
 			"varLabels": [
 				"gateway",
@@ -243,7 +243,7 @@
 		},
 		"result": "Active",
 		"promDesc": {
-			"fqName": "gateway_dect_status",
+			"fqName": "gateway_dect_active",
 			"help": "is dect device currently active",
 			"varLabels": [
 				"gateway",
