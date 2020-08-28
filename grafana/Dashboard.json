@@ -20,7 +20,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "7.1.0"
+      "version": "7.1.5"
     },
     {
       "type": "panel",
@@ -142,7 +142,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -264,7 +264,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -374,7 +374,7 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -490,7 +490,7 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -552,20 +552,6 @@
               "text": "N/A",
               "type": 1,
               "value": "null"
-            },
-            {
-              "id": 1,
-              "op": "=",
-              "text": "Disconnected",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "id": 2,
-              "op": "=",
-              "text": "Connected",
-              "type": 1,
-              "value": "1"
             }
           ],
           "nullValueMode": "connected",
@@ -610,11 +596,12 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
           "expr": "gateway_uptime_seconds",
+          "format": "table",
           "groupBy": [
             {
               "params": [
@@ -646,7 +633,7 @@
           ],
           "tags": [
             {
-              "key": "type",
+              "key": "type_instance",
               "operator": "=",
               "value": "uptime"
             }
@@ -654,6 +641,7 @@
           "target": ""
         }
       ],
+      "timeFrom": null,
       "title": "Fritzbox Uptime",
       "type": "stat"
     },
@@ -719,7 +707,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -832,7 +820,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "gateway_wan_bytes_received{gateway=\"fritz.box\", instance=\"fritzbox-exporter-svc.fritzbox:9133\", job=\"fritzbox\"}",
+      "tableColumn": "gateway_wan_bytes_received{gateway=\"fritz.box\", instance=\"127.0.0.1:9101\", job=\"fritzbox_exporter\"}",
       "targets": [
         {
           "dsType": "prometheus",
@@ -951,7 +939,7 @@
         "lineColor": "#e24d42",
         "show": true
       },
-      "tableColumn": "gateway_wan_bytes_sent{gateway=\"fritz.box\", instance=\"fritzbox-exporter-svc.fritzbox:9133\", job=\"fritzbox\"}",
+      "tableColumn": "gateway_wan_bytes_sent{gateway=\"fritz.box\", instance=\"127.0.0.1:9101\", job=\"fritzbox_exporter\"}",
       "targets": [
         {
           "dsType": "prometheus",
@@ -1062,7 +1050,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -1164,7 +1152,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "targets": [
         {
           "dsType": "prometheus",
@@ -1223,8 +1211,7 @@
       "editable": true,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "links": []
+          "custom": {}
         },
         "overrides": []
       },
@@ -1255,7 +1242,7 @@
       "links": [],
       "nullPointMode": "connected",
       "percentage": false,
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1551,8 +1538,7 @@
       "editable": true,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "links": []
+          "custom": {}
         },
         "overrides": []
       },
@@ -1582,7 +1568,7 @@
       "links": [],
       "nullPointMode": "connected",
       "percentage": false,
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1761,8 +1747,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "links": []
+          "custom": {}
         },
         "overrides": []
       },
@@ -1789,7 +1774,7 @@
       "linewidth": 1,
       "nullPointMode": "null",
       "percentage": false,
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -2027,8 +2012,7 @@
       "datasource": "${DS_PROMETHEUS}",
       "fieldConfig": {
         "defaults": {
-          "custom": {},
-          "links": []
+          "custom": {}
         },
         "overrides": []
       },
@@ -2061,7 +2045,7 @@
       "links": [],
       "nullPointMode": "null",
       "percentage": false,
-      "pluginVersion": "7.1.0",
+      "pluginVersion": "7.1.5",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
