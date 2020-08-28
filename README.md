@@ -6,18 +6,21 @@ to prometheus.
 
 This exporter is tested with a Fritzbox 7590 software version 07.12 and 07.20.
 
-
 The goal of the fork is:
   - [x] allow passing of username / password using evironment variable
   - [x] use https instead of http for communitcation with fritz.box
   - [x] move config of metrics to be exported to config file rather then code
   - [x] add config for additional metrics to collect (especially from TR-064 API)
   - [x] create a grafana dashboard consuming the additional metrics
-
+ 
 Other changes:
   - replaced digest authentication code with own implementation
   - improved error messages
-  
+  - **New:** test mode prints details about all SOAP Actions and their parameters
+  - **New:** collect option to directly test collection of results
+  - **New:** additional metrics to collect details about connected hosts and DECT devices
+  - **New:** support to use results like hostname or MAC address as labels to metrics
+ 
 
 ## Building
 
@@ -43,7 +46,9 @@ Usage:
       -password string
         The password for the FRITZ!Box UPnP service
       -test
-        print all available metrics to stdout
+        print all available SOAP calls and their results (if call possible) to stdout
+      -collect
+        collect metrics once print to stdout and exit
       -json-out string
         store metrics also to JSON file when running test   
       -username string
