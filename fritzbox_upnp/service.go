@@ -493,9 +493,9 @@ func convertResult(val string, arg *Argument) (interface{}, error) {
 }
 
 // Load the services tree from an device.
-func LoadServices(baseurl string, username string, password string) (*Root, error) {
+func LoadServices(baseurl string, username string, password string, verifyTls bool) (*Root, error) {
 
-	if strings.HasPrefix(baseurl, "https://") {
+	if !verifyTls && strings.HasPrefix(baseurl, "https://") {
 		// disable certificate validation, since fritz.box uses self signed cert
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}

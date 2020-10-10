@@ -46,9 +46,10 @@ var (
 	flagAddr        = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
 	flagMetricsFile = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
 
-	flagGatewayUrl      = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
-	flagGatewayUsername = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
-	flagGatewayPassword = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
+	flagGatewayUrl       = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
+	flagGatewayUsername  = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
+	flagGatewayPassword  = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
+	flagGatewayVerifyTLS = flag.Bool("verifyTls", false, "Verify the tls connection when connecting to the FRITZ!Box")
 )
 
 var (
@@ -89,10 +90,11 @@ type Metric struct {
 var metrics []*Metric
 
 type FritzboxCollector struct {
-	Url      string
-	Gateway  string
-	Username string
-	Password string
+	Url       string
+	Gateway   string
+	Username  string
+	Password  string
+	VerifyTls bool
 
 	sync.Mutex // protects Root
 	Root       *upnp.Root
@@ -124,7 +126,7 @@ func (w *TestResponseWriter) String() string {
 // LoadServices tries to load the service information. Retries until success.
 func (fc *FritzboxCollector) LoadServices() {
 	for {
-		root, err := upnp.LoadServices(fc.Url, fc.Username, fc.Password)
+		root, err := upnp.LoadServices(fc.Url, fc.Username, fc.Password, fc.VerifyTls)
 		if err != nil {
 			fmt.Printf("cannot load services: %s\n", err)
 
@@ -315,7 +317,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func test() {
-	root, err := upnp.LoadServices(*flagGatewayUrl, *flagGatewayUsername, *flagGatewayPassword)
+	root, err := upnp.LoadServices(*flagGatewayUrl, *flagGatewayUsername, *flagGatewayPassword, *flagGatewayVerifyTLS)
 	if err != nil {
 		panic(err)
 	}
@@ -449,10 +451,11 @@ func main() {
 	}
 
 	collector := &FritzboxCollector{
-		Url:      *flagGatewayUrl,
-		Gateway:  u.Hostname(),
-		Username: *flagGatewayUsername,
-		Password: *flagGatewayPassword,
+		Url:       *flagGatewayUrl,
+		Gateway:   u.Hostname(),
+		Username:  *flagGatewayUsername,
+		Password:  *flagGatewayPassword,
+		VerifyTls: *flagGatewayVerifyTLS,
 	}
 
 	if *flagCollect {
