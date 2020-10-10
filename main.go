@@ -15,38 +15,38 @@ package main
 // limitations under the License.
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
-	"net/url"
 	"net/http"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
-	"encoding/json"
-	"io/ioutil"
-	"sort"
-	"bytes"
-	"errors"
-	"strings"
-	"strconv"
-	
+
 	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	
-	upnp "github.com/sberk42/fritzbox_exporter/fritzbox_upnp"
+
+	upnp "github.com/chr-fritz/fritzbox_exporter/fritzbox_upnp"
 )
 
 const serviceLoadRetryTime = 1 * time.Minute
 
 var (
-	flag_test = flag.Bool("test", false, "print all available metrics to stdout")
+	flag_test    = flag.Bool("test", false, "print all available metrics to stdout")
 	flag_collect = flag.Bool("collect", false, "print configured metrics to stdout and exit")
 	flag_jsonout = flag.String("json-out", "", "store metrics also to JSON file when running test")
-	 
-	flag_addr = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
+
+	flag_addr         = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
 	flag_metrics_file = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
 
-	flag_gateway_url  = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
+	flag_gateway_url      = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
 	flag_gateway_username = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
 	flag_gateway_password = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
 )
@@ -58,36 +58,35 @@ var (
 	})
 )
 
-
 type JSON_PromDesc struct {
-	FqName	string			`json:"fqName"`
-	Help	string			`json:"help"`
-	VarLabels	[]string	`json:"varLabels"`
+	FqName    string   `json:"fqName"`
+	Help      string   `json:"help"`
+	VarLabels []string `json:"varLabels"`
 }
 
 type ActionArg struct {
-	Name string				`json:"Name"`
-	IsIndex bool			`json:"IsIndex"`
-	ProviderAction string	`json:"ProviderAction"`
-	Value string			`json:"Value"`
+	Name           string `json:"Name"`
+	IsIndex        bool   `json:"IsIndex"`
+	ProviderAction string `json:"ProviderAction"`
+	Value          string `json:"Value"`
 }
 
 type Metric struct {
 	// initialized loading JSON
-	Service	string		`json:"service"`
-	Action	string		`json:"action"`
-	ActionArgument	*ActionArg	`json:"actionArgument"`
-	Result	string		`json:"result"`
-	OkValue	string		`json:"okValue"`
-	PromDesc	JSON_PromDesc		`json:"promDesc"`
-	PromType	string			`json:"promType"`
-	
+	Service        string        `json:"service"`
+	Action         string        `json:"action"`
+	ActionArgument *ActionArg    `json:"actionArgument"`
+	Result         string        `json:"result"`
+	OkValue        string        `json:"okValue"`
+	PromDesc       JSON_PromDesc `json:"promDesc"`
+	PromType       string        `json:"promType"`
+
 	// initialized at startup
 	Desc       *prometheus.Desc
 	MetricType prometheus.ValueType
 }
 
-var metrics []*Metric;
+var metrics []*Metric
 
 type FritzboxCollector struct {
 	Url      string
@@ -101,9 +100,9 @@ type FritzboxCollector struct {
 
 // simple ResponseWriter to collect output
 type TestResponseWriter struct {
-	header		http.Header
-	statusCode	int
-	body		bytes.Buffer
+	header     http.Header
+	statusCode int
+	body       bytes.Buffer
 }
 
 func (w *TestResponseWriter) Header() http.Header {
@@ -149,34 +148,34 @@ func (fc *FritzboxCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric, result upnp.Result) {
-	
+
 	val, ok := result[m.Result]
 	if !ok {
 		fmt.Printf("%s.%s has no result %s", m.Service, m.Action, m.Result)
 		collect_errors.Inc()
 		return
 	}
-			
+
 	var floatval float64
 	switch tval := val.(type) {
-		case uint64:
-			floatval = float64(tval)
-		case bool:
-			if tval {
-				floatval = 1
-			} else {
-				floatval = 0
-			}
-		case string:
-			if tval == m.OkValue {
-				floatval = 1
-			} else {
-				floatval = 0
-			}
-		default:
-			fmt.Println("unknown type", val)
-			collect_errors.Inc()
-			return
+	case uint64:
+		floatval = float64(tval)
+	case bool:
+		if tval {
+			floatval = 1
+		} else {
+			floatval = 0
+		}
+	case string:
+		if tval == m.OkValue {
+			floatval = 1
+		} else {
+			floatval = 0
+		}
+	default:
+		fmt.Println("unknown type", val)
+		collect_errors.Inc()
+		return
 	}
 
 	labels := make([]string, len(m.PromDesc.VarLabels))
@@ -188,50 +187,50 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 			if !ok {
 				fmt.Printf("%s.%s has no resul for label %s", m.Service, m.Action, l)
 				lval = ""
-			}			
-			
+			}
+
 			// convert tolower to avoid problems with labels like hostname
 			labels[i] = strings.ToLower(fmt.Sprintf("%v", lval))
 		}
 	}
-	
+
 	ch <- prometheus.MustNewConstMetric(
 		m.Desc,
 		m.MetricType,
 		floatval,
-		labels...)	
+		labels...)
 }
 
 func (fc *FritzboxCollector) GetActionResult(result_map map[string]upnp.Result, serviceType string, actionName string, actionArg *upnp.ActionArgument) (upnp.Result, error) {
-	
-	m_key := serviceType+"|"+actionName
 
-	// for calls with argument also add arguement name and value to key	
+	m_key := serviceType + "|" + actionName
+
+	// for calls with argument also add arguement name and value to key
 	if actionArg != nil {
-		
-		m_key += "|"+actionArg.Name+"|"+fmt.Sprintf("%v", actionArg.Value)
+
+		m_key += "|" + actionArg.Name + "|" + fmt.Sprintf("%v", actionArg.Value)
 	}
 
-	last_result	:= result_map[m_key];
+	last_result := result_map[m_key]
 	if last_result == nil {
 		service, ok := fc.Root.Services[serviceType]
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("service %s not found", serviceType))	
+			return nil, errors.New(fmt.Sprintf("service %s not found", serviceType))
 		}
 
 		action, ok := service.Actions[actionName]
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("action %s not found in service %s", actionName, serviceType))	
+			return nil, errors.New(fmt.Sprintf("action %s not found in service %s", actionName, serviceType))
 		}
-	
+
 		var err error
-		last_result, err = action.Call(actionArg);
-	
+		last_result, err = action.Call(actionArg)
+
 		if err != nil {
 			return nil, err
 		}
-		
-		result_map[m_key]=last_result
+
+		result_map[m_key] = last_result
 	}
 
 	return last_result, nil
@@ -254,9 +253,9 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 		var actArg *upnp.ActionArgument
 		if m.ActionArgument != nil {
 			aa := m.ActionArgument
-			var value interface {}  
+			var value interface{}
 			value = aa.Value
-			 
+
 			if aa.ProviderAction != "" {
 				provRes, err := fc.GetActionResult(result_map, m.Service, aa.ProviderAction, nil)
 
@@ -265,9 +264,9 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 					collect_errors.Inc()
 					continue
 				}
-				
+
 				var ok bool
-				value, ok = provRes[aa.Value]		// Value contains the result name for provider actions
+				value, ok = provRes[aa.Value] // Value contains the result name for provider actions
 				if !ok {
 					fmt.Printf("provider action %s for %s.%s has no result %s", m.Service, m.Action, aa.Value)
 					collect_errors.Inc()
@@ -281,34 +280,34 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 				if err != nil {
 					fmt.Println(err.Error())
 					collect_errors.Inc()
-					continue			
+					continue
 				}
-				
-				for i:=0; i<count; i++ {
-					actArg = &upnp.ActionArgument{Name: aa.Name, Value: i }
+
+				for i := 0; i < count; i++ {
+					actArg = &upnp.ActionArgument{Name: aa.Name, Value: i}
 					result, err := fc.GetActionResult(result_map, m.Service, m.Action, actArg)
 
 					if err != nil {
 						fmt.Println(err.Error())
 						collect_errors.Inc()
-						continue			
+						continue
 					}
 
-					fc.ReportMetric(ch, m, result)					
+					fc.ReportMetric(ch, m, result)
 				}
-				
+
 				continue
 			} else {
-				actArg = &upnp.ActionArgument{Name: aa.Name, Value: value }
+				actArg = &upnp.ActionArgument{Name: aa.Name, Value: value}
 			}
-		} 
-		
+		}
+
 		result, err := fc.GetActionResult(result_map, m.Service, m.Action, actArg)
 
 		if err != nil {
 			fmt.Println(err.Error())
 			collect_errors.Inc()
-			continue			
+			continue
 		}
 
 		fc.ReportMetric(ch, m, result)
@@ -320,7 +319,7 @@ func test() {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	var newEntry bool = false
 	var json bytes.Buffer
 	json.WriteString("[\n")
@@ -333,7 +332,7 @@ func test() {
 	for _, k := range serviceKeys {
 		s := root.Services[k]
 		fmt.Printf("Service: %s (Url: %s)\n", k, s.ControlUrl)
-		
+
 		actionKeys := []string{}
 		for l, _ := range s.Actions {
 			actionKeys = append(actionKeys, l)
@@ -346,22 +345,22 @@ func test() {
 				sv := arg.StateVariable
 				fmt.Printf("    %s [%s] (%s, %s)\n", arg.RelatedStateVariable, arg.Direction, arg.Name, sv.DataType)
 			}
-			
+
 			if !a.IsGetOnly() {
 				fmt.Printf("  %s - not calling, since arguments required or no output\n", a.Name)
 				continue
 			}
 
 			// only create JSON for Get
-			// TODO also create JSON templates for input actionParams 
+			// TODO also create JSON templates for input actionParams
 			for _, arg := range a.Arguments {
-				// create new json entry				
-				if(newEntry) {
+				// create new json entry
+				if newEntry {
 					json.WriteString(",\n")
 				} else {
-					newEntry=true
+					newEntry = true
 				}
-				
+
 				json.WriteString("\t{\n\t\t\"service\": \"")
 				json.WriteString(k)
 				json.WriteString("\",\n\t\t\"action\": \"")
@@ -373,7 +372,7 @@ func test() {
 
 			fmt.Printf("  %s - calling - results: variable: value\n", a.Name)
 			res, err := a.Call(nil)
-			
+
 			if err != nil {
 				fmt.Printf("    FAILED:%s\n", err.Error())
 				continue
@@ -384,28 +383,28 @@ func test() {
 			}
 		}
 	}
-	
+
 	json.WriteString("\n]")
-	
+
 	if *flag_jsonout != "" {
 		err := ioutil.WriteFile(*flag_jsonout, json.Bytes(), 0644)
 		if err != nil {
 			fmt.Printf("Failed writing JSON file '%s': %s\n", *flag_jsonout, err.Error())
-		}			
+		}
 	}
 }
 
 func getValueType(vt string) prometheus.ValueType {
 	switch vt {
 	case "CounterValue":
-		return prometheus.CounterValue;
+		return prometheus.CounterValue
 	case "GaugeValue":
-		return prometheus.GaugeValue;
+		return prometheus.GaugeValue
 	case "UntypedValue":
-		return prometheus.UntypedValue;
+		return prometheus.UntypedValue
 	}
 
-	return prometheus.UntypedValue;
+	return prometheus.UntypedValue
 }
 
 func main() {
@@ -422,7 +421,7 @@ func main() {
 		return
 	}
 
-	// read metrics 
+	// read metrics
 	jsonData, err := ioutil.ReadFile(*flag_metrics_file)
 	if err != nil {
 		fmt.Println("error reading metric file:", err)
@@ -438,24 +437,24 @@ func main() {
 	// init metrics
 	for _, m := range metrics {
 		pd := m.PromDesc
-		
+
 		// make labels lower case
 		labels := make([]string, len(pd.VarLabels))
 		for i, l := range pd.VarLabels {
 			labels[i] = strings.ToLower(l)
 		}
-		
-		m.Desc		= prometheus.NewDesc(pd.FqName, pd.Help, labels, nil)
-		m.MetricType	= getValueType(m.PromType)
+
+		m.Desc = prometheus.NewDesc(pd.FqName, pd.Help, labels, nil)
+		m.MetricType = getValueType(m.PromType)
 	}
 
 	collector := &FritzboxCollector{
-		Url:  *flag_gateway_url,
-		Gateway: u.Hostname(),
+		Url:      *flag_gateway_url,
+		Gateway:  u.Hostname(),
 		Username: *flag_gateway_username,
 		Password: *flag_gateway_password,
 	}
-	
+
 	if *flag_collect {
 		collector.LoadServices()
 
@@ -467,13 +466,13 @@ func main() {
 		// simulate HTTP request without starting actual http server
 		writer := TestResponseWriter{header: http.Header{}}
 		request := http.Request{}
-		promhttp.Handler().ServeHTTP(&writer, &request) 
+		promhttp.Handler().ServeHTTP(&writer, &request)
 
 		fmt.Println(writer.String())
-		
+
 		return
 	}
-		
+
 	go collector.LoadServices()
 
 	prometheus.MustRegister(collector)
