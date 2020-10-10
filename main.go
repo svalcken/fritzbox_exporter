@@ -39,26 +39,26 @@ import (
 const serviceLoadRetryTime = 1 * time.Minute
 
 var (
-	flag_test    = flag.Bool("test", false, "print all available metrics to stdout")
-	flag_collect = flag.Bool("collect", false, "print configured metrics to stdout and exit")
-	flag_jsonout = flag.String("json-out", "", "store metrics also to JSON file when running test")
+	flagTest    = flag.Bool("test", false, "print all available metrics to stdout")
+	flagCollect = flag.Bool("collect", false, "print configured metrics to stdout and exit")
+	flagJsonOut = flag.String("json-out", "", "store metrics also to JSON file when running test")
 
-	flag_addr         = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
-	flag_metrics_file = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
+	flagAddr        = flag.String("listen-address", "127.0.0.1:9042", "The address to listen on for HTTP requests.")
+	flagMetricsFile = flag.String("metrics-file", "metrics.json", "The JSON file with the metric definitions.")
 
-	flag_gateway_url      = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
-	flag_gateway_username = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
-	flag_gateway_password = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
+	flagGatewayUrl      = flag.String("gateway-url", "http://fritz.box:49000", "The URL of the FRITZ!Box")
+	flagGatewayUsername = flag.String("username", "", "The user for the FRITZ!Box UPnP service")
+	flagGatewayPassword = flag.String("password", "", "The password for the FRITZ!Box UPnP service")
 )
 
 var (
-	collect_errors = prometheus.NewCounter(prometheus.CounterOpts{
+	collectErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "fritzbox_exporter_collect_errors",
 		Help: "Number of collection errors.",
 	})
 )
 
-type JSON_PromDesc struct {
+type JsonPromDesc struct {
 	FqName    string   `json:"fqName"`
 	Help      string   `json:"help"`
 	VarLabels []string `json:"varLabels"`
@@ -73,13 +73,13 @@ type ActionArg struct {
 
 type Metric struct {
 	// initialized loading JSON
-	Service        string        `json:"service"`
-	Action         string        `json:"action"`
-	ActionArgument *ActionArg    `json:"actionArgument"`
-	Result         string        `json:"result"`
-	OkValue        string        `json:"okValue"`
-	PromDesc       JSON_PromDesc `json:"promDesc"`
-	PromType       string        `json:"promType"`
+	Service        string       `json:"service"`
+	Action         string       `json:"action"`
+	ActionArgument *ActionArg   `json:"actionArgument"`
+	Result         string       `json:"result"`
+	OkValue        string       `json:"okValue"`
+	PromDesc       JsonPromDesc `json:"promDesc"`
+	PromType       string       `json:"promType"`
 
 	// initialized at startup
 	Desc       *prometheus.Desc
@@ -152,7 +152,7 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 	val, ok := result[m.Result]
 	if !ok {
 		fmt.Printf("%s.%s has no result %s", m.Service, m.Action, m.Result)
-		collect_errors.Inc()
+		collectErrors.Inc()
 		return
 	}
 
@@ -174,7 +174,7 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 		}
 	default:
 		fmt.Println("unknown type", val)
-		collect_errors.Inc()
+		collectErrors.Inc()
 		return
 	}
 
@@ -189,7 +189,7 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 				lval = ""
 			}
 
-			// convert tolower to avoid problems with labels like hostname
+			// convert to lower to avoid problems with labels like hostname
 			labels[i] = strings.ToLower(fmt.Sprintf("%v", lval))
 		}
 	}
@@ -201,18 +201,18 @@ func (fc *FritzboxCollector) ReportMetric(ch chan<- prometheus.Metric, m *Metric
 		labels...)
 }
 
-func (fc *FritzboxCollector) GetActionResult(result_map map[string]upnp.Result, serviceType string, actionName string, actionArg *upnp.ActionArgument) (upnp.Result, error) {
+func (fc *FritzboxCollector) GetActionResult(resultMap map[string]upnp.Result, serviceType string, actionName string, actionArg *upnp.ActionArgument) (upnp.Result, error) {
 
-	m_key := serviceType + "|" + actionName
+	mKey := serviceType + "|" + actionName
 
 	// for calls with argument also add arguement name and value to key
 	if actionArg != nil {
 
-		m_key += "|" + actionArg.Name + "|" + fmt.Sprintf("%v", actionArg.Value)
+		mKey += "|" + actionArg.Name + "|" + fmt.Sprintf("%v", actionArg.Value)
 	}
 
-	last_result := result_map[m_key]
-	if last_result == nil {
+	lastResult := resultMap[mKey]
+	if lastResult == nil {
 		service, ok := fc.Root.Services[serviceType]
 		if !ok {
 			return nil, errors.New(fmt.Sprintf("service %s not found", serviceType))
@@ -224,16 +224,16 @@ func (fc *FritzboxCollector) GetActionResult(result_map map[string]upnp.Result, 
 		}
 
 		var err error
-		last_result, err = action.Call(actionArg)
+		lastResult, err = action.Call(actionArg)
 
 		if err != nil {
 			return nil, err
 		}
 
-		result_map[m_key] = last_result
+		resultMap[mKey] = lastResult
 	}
 
-	return last_result, nil
+	return lastResult, nil
 }
 
 func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
@@ -247,7 +247,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// create a map for caching results
-	var result_map = make(map[string]upnp.Result)
+	var resultMap = make(map[string]upnp.Result)
 
 	for _, m := range metrics {
 		var actArg *upnp.ActionArgument
@@ -257,19 +257,19 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			value = aa.Value
 
 			if aa.ProviderAction != "" {
-				provRes, err := fc.GetActionResult(result_map, m.Service, aa.ProviderAction, nil)
+				provRes, err := fc.GetActionResult(resultMap, m.Service, aa.ProviderAction, nil)
 
 				if err != nil {
 					fmt.Printf("Error getting provider action %s result for %s.%s: %s\n", aa.ProviderAction, m.Service, m.Action, err.Error())
-					collect_errors.Inc()
+					collectErrors.Inc()
 					continue
 				}
 
 				var ok bool
 				value, ok = provRes[aa.Value] // Value contains the result name for provider actions
 				if !ok {
-					fmt.Printf("provider action %s for %s.%s has no result %s", m.Service, m.Action, aa.Value)
-					collect_errors.Inc()
+					fmt.Printf("provider action %s for %s.%s has no result", m.Service, m.Action, aa.Value)
+					collectErrors.Inc()
 					continue
 				}
 			}
@@ -279,17 +279,17 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 				count, err := strconv.Atoi(sval)
 				if err != nil {
 					fmt.Println(err.Error())
-					collect_errors.Inc()
+					collectErrors.Inc()
 					continue
 				}
 
 				for i := 0; i < count; i++ {
 					actArg = &upnp.ActionArgument{Name: aa.Name, Value: i}
-					result, err := fc.GetActionResult(result_map, m.Service, m.Action, actArg)
+					result, err := fc.GetActionResult(resultMap, m.Service, m.Action, actArg)
 
 					if err != nil {
 						fmt.Println(err.Error())
-						collect_errors.Inc()
+						collectErrors.Inc()
 						continue
 					}
 
@@ -302,11 +302,11 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 
-		result, err := fc.GetActionResult(result_map, m.Service, m.Action, actArg)
+		result, err := fc.GetActionResult(resultMap, m.Service, m.Action, actArg)
 
 		if err != nil {
 			fmt.Println(err.Error())
-			collect_errors.Inc()
+			collectErrors.Inc()
 			continue
 		}
 
@@ -315,7 +315,7 @@ func (fc *FritzboxCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func test() {
-	root, err := upnp.LoadServices(*flag_gateway_url, *flag_gateway_username, *flag_gateway_password)
+	root, err := upnp.LoadServices(*flagGatewayUrl, *flagGatewayUsername, *flagGatewayPassword)
 	if err != nil {
 		panic(err)
 	}
@@ -333,7 +333,7 @@ func test() {
 		s := root.Services[k]
 		fmt.Printf("Service: %s (Url: %s)\n", k, s.ControlUrl)
 
-		actionKeys := []string{}
+		var actionKeys []string
 		for l, _ := range s.Actions {
 			actionKeys = append(actionKeys, l)
 		}
@@ -386,10 +386,10 @@ func test() {
 
 	json.WriteString("\n]")
 
-	if *flag_jsonout != "" {
-		err := ioutil.WriteFile(*flag_jsonout, json.Bytes(), 0644)
+	if *flagJsonOut != "" {
+		err := ioutil.WriteFile(*flagJsonOut, json.Bytes(), 0644)
 		if err != nil {
-			fmt.Printf("Failed writing JSON file '%s': %s\n", *flag_jsonout, err.Error())
+			fmt.Printf("Failed writing JSON file '%s': %s\n", *flagJsonOut, err.Error())
 		}
 	}
 }
@@ -410,19 +410,19 @@ func getValueType(vt string) prometheus.ValueType {
 func main() {
 	flag.Parse()
 
-	u, err := url.Parse(*flag_gateway_url)
+	u, err := url.Parse(*flagGatewayUrl)
 	if err != nil {
 		fmt.Println("invalid URL:", err)
 		return
 	}
 
-	if *flag_test {
+	if *flagTest {
 		test()
 		return
 	}
 
 	// read metrics
-	jsonData, err := ioutil.ReadFile(*flag_metrics_file)
+	jsonData, err := ioutil.ReadFile(*flagMetricsFile)
 	if err != nil {
 		fmt.Println("error reading metric file:", err)
 		return
@@ -449,17 +449,17 @@ func main() {
 	}
 
 	collector := &FritzboxCollector{
-		Url:      *flag_gateway_url,
+		Url:      *flagGatewayUrl,
 		Gateway:  u.Hostname(),
-		Username: *flag_gateway_username,
-		Password: *flag_gateway_password,
+		Username: *flagGatewayUsername,
+		Password: *flagGatewayPassword,
 	}
 
-	if *flag_collect {
+	if *flagCollect {
 		collector.LoadServices()
 
 		prometheus.MustRegister(collector)
-		prometheus.MustRegister(collect_errors)
+		prometheus.MustRegister(collectErrors)
 
 		fmt.Println("collecting metrics via http")
 
@@ -476,10 +476,10 @@ func main() {
 	go collector.LoadServices()
 
 	prometheus.MustRegister(collector)
-	prometheus.MustRegister(collect_errors)
+	prometheus.MustRegister(collectErrors)
 
 	http.Handle("/metrics", promhttp.Handler())
-	fmt.Printf("metrics available at http://%s/metrics\n", *flag_addr)
+	fmt.Printf("metrics available at http://%s/metrics\n", *flagAddr)
 
-	log.Fatal(http.ListenAndServe(*flag_addr, nil))
+	log.Fatal(http.ListenAndServe(*flagAddr, nil))
 }
