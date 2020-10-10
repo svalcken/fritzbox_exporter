@@ -481,8 +481,14 @@ func main() {
 	prometheus.MustRegister(collector)
 	prometheus.MustRegister(collectErrors)
 
+	healthChecks := createHealthChecks(*flagGatewayUrl)
+
 	http.Handle("/metrics", promhttp.Handler())
 	fmt.Printf("metrics available at http://%s/metrics\n", *flagAddr)
+	http.HandleFunc("/ready", healthChecks.ReadyEndpoint)
+	fmt.Printf("readyness check available at http://%s/ready\n", *flagAddr)
+	http.HandleFunc("/live", healthChecks.LiveEndpoint)
+	fmt.Printf("liveness check available at http://%s/live\n", *flagAddr)
 
 	log.Fatal(http.ListenAndServe(*flagAddr, nil))
 }
