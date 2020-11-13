@@ -83,7 +83,7 @@
 		"result": "Layer1UpstreamMaxBitRate",
 		"promDesc": {
 			"fqName": "gateway_wan_layer1_upstream_max_bitrate",
-			"help": "Layer1 upstream max bitrate",
+			"help": "Layer1 upstream max bitrate (profile)",
 			"varLabels": [
 				"gateway"
 			]
@@ -96,7 +96,7 @@
 		"result": "Layer1DownstreamMaxBitRate",
 		"promDesc": {
 			"fqName": "gateway_wan_layer1_downstream_max_bitrate",
-			"help": "Layer1 downstream max bitrate",
+			"help": "Layer1 downstream max bitrate (profile)",
 			"varLabels": [
 				"gateway"
 			]
@@ -316,6 +316,32 @@
 				"ID",
 				"Name",
 				"Model"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:dslforum-org:service:WANDSLInterfaceConfig:1",
+		"action": "GetInfo",
+		"result": "UpstreamMaxRate",
+		"promDesc": {
+			"fqName": "gateway_wan_layer1_upstream_max_rate",
+			"help": "Layer1 upstream max bitrate (line)",
+			"varLabels": [
+				"gateway"
+			]
+		},
+		"promType": "GaugeValue"
+	},
+	{
+		"service": "urn:dslforum-org:service:WANDSLInterfaceConfig:1",
+		"action": "GetInfo",
+		"result": "DownstreamMaxRate",
+		"promDesc": {
+			"fqName": "gateway_wan_layer1_downstream_max_rate",
+			"help": "Layer1 downstream max bitrate (line)",
+			"varLabels": [
+				"gateway"
 			]
 		},
 		"promType": "GaugeValue"
