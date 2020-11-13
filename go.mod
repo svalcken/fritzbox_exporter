@@ -1,4 +1,4 @@
-module github.com/chr-fritz/fritzbox_exporter
+module gitlab.com/dekarl/fritzbox_exporter
 
 go 1.15
 

@@ -42,7 +42,7 @@ Other changes:
 ## Building
 
 ```shell script
-git clone https://github.com/chr-fritz/fritzbox_exporter.git
+git clone https://gitlab.com/dekarl/fritzbox_exporter.git
 cd fritzbox_exporter
 go mod download
 go build
