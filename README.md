@@ -94,20 +94,20 @@ read -rs PASSWORD && export PASSWORD && ./fritzbox_exporter -username <user> -te
 
 ### Running with docker
 
-The fritzbox-exporter will be built by the Docker Hub Infrastructure
+The fritzbox-exporter will be built by the Gitlab Infrastructure
 which can be used with:
 
 ```shell script
-docker run -p 8080:8080 chrfritz/fritzbox-exporter
+docker run -p 8080:8080 registry.gitlab.com/dekarl/fritzbox_exporter
 ```
 
 It supports all commandline arguments like the original one:
 
 ```shell script
-docker run chrfritz/fritzbox-exporter -h
+docker run registry.gitlab.com/dekarl/fritzbox_exporter -h
 ```
 
-See also <https://hub.docker.com/r/chrfritz/fritzbox-exporter>.
+See also <https://gitlab.com/dekarl/fritzbox_exporter/container_registry>.
 
 ## Exported metrics
 
